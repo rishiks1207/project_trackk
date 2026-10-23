@@ -1,0 +1,6 @@
+{
+  "name": "DBIT ProjectTrack - Centralized Project Proposal & Progress Portal",
+  "description": "Centralized project proposal and progress tracking portal for DBIT Computer Engineering, featuring real-time SBERT + TF-IDF duplicate screening, expert-in-the-loop pitch defense arbitration, visual stage-gate tracking, and GitHub repository sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
