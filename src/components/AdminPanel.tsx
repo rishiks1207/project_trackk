@@ -20,6 +20,12 @@ import {
   X
 } from 'lucide-react';
 import { UserAccount, UserRole, ProjectProposal } from '../types';
+import { 
+  INITIAL_INSTITUTIONAL_USERS, 
+  subscribeToUsers, 
+  saveUserToFirestore, 
+  deleteUserFromFirestore 
+} from '../utils/firestoreSync';
 
 interface AdminPanelProps {
   proposals: ProjectProposal[];
@@ -32,7 +38,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onSelectProposal,
   onNavigateToTab
 }) => {
-  const [userList, setUserList] = useState<UserAccount[]>([]);
+  const [userList, setUserList] = useState<UserAccount[]>(() => {
+    try {
+      const saved = localStorage.getItem('dbit_admin_users');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return INITIAL_INSTITUTIONAL_USERS;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -57,107 +72,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const INITIAL_USERS: UserAccount[] = [
-    {
-      id: 1,
-      uid: 'usr-admin-01',
-      email: 'admin@dbit.in',
-      name: 'Admin',
-      role: 'admin',
-      cohort: 'System Administrator',
-      department: 'Computer Engineering',
-      assignedProjectCount: 3
-    },
-    {
-      id: 2,
-      uid: 'usr-coord-01',
-      email: 'coordinator@dbit.in',
-      name: 'Prof. Meenal Kulkarni',
-      role: 'coordinator',
-      cohort: 'SE/TE Project Coordinator',
-      department: 'Computer Engineering',
-      assignedProjectCount: 3
-    },
-    {
-      id: 3,
-      uid: 'usr-guide-01',
-      email: 'guide@dbit.in',
-      name: 'Mr. Nazareth Remedios',
-      role: 'guide',
-      cohort: 'Faculty Guide',
-      trackNo: 7,
-      department: 'Computer Engineering',
-      assignedProjectCount: 2
-    },
-    {
-      id: 4,
-      uid: 'usr-guide-02',
-      email: 'guide2@dbit.in',
-      name: 'Ms. Harleen Kaur Plaha',
-      role: 'guide',
-      cohort: 'Faculty Guide',
-      trackNo: 7,
-      department: 'Computer Engineering',
-      assignedProjectCount: 1
-    },
-    {
-      id: 5,
-      uid: 'usr-stud-01',
-      email: 'rishiks1207@gmail.com',
-      name: 'Rishik Ezhuthachan',
-      role: 'student',
-      rollNo: '15',
-      cohort: 'SE COMPS C (Batch A)',
-      groupNo: 5,
-      trackNo: 7,
-      department: 'Computer Engineering',
-      assignedProjectCount: 1,
-      relatedProposalTitle: 'Centralized Project Proposal & Progress Tracking Portal'
-    },
-    {
-      id: 6,
-      uid: 'usr-stud-02',
-      email: 'apoorvadeep.sinha@dbit.in',
-      name: 'Apoorvadeep Sinha',
-      role: 'student',
-      rollNo: '16',
-      cohort: 'SE COMPS C (Batch A)',
-      groupNo: 5,
-      trackNo: 7,
-      department: 'Computer Engineering',
-      assignedProjectCount: 1,
-      relatedProposalTitle: 'Centralized Project Proposal & Progress Tracking Portal'
-    },
-    {
-      id: 7,
-      uid: 'usr-stud-03',
-      email: 'ron.barretto@dbit.in',
-      name: 'Ron Barretto',
-      role: 'student',
-      rollNo: '17',
-      cohort: 'SE COMPS C (Batch A)',
-      groupNo: 5,
-      trackNo: 7,
-      department: 'Computer Engineering',
-      assignedProjectCount: 1,
-      relatedProposalTitle: 'Centralized Project Proposal & Progress Tracking Portal'
-    },
-    {
-      id: 8,
-      uid: 'usr-stud-04',
-      email: 'aryan.gaikwad@dbit.in',
-      name: 'Aryan Gaikwad',
-      role: 'student',
-      rollNo: '18',
-      cohort: 'SE COMPS C (Batch A)',
-      groupNo: 5,
-      trackNo: 7,
-      department: 'Computer Engineering',
-      assignedProjectCount: 1,
-      relatedProposalTitle: 'Centralized Project Proposal & Progress Tracking Portal'
-    }
-  ];
-
   // Fetch users with resilience against static hosts
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -179,22 +93,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       console.warn('Backend API offline, using local store:', err);
     }
 
-    // Fallback: load from localStorage or INITIAL_USERS
     try {
       const saved = localStorage.getItem('dbit_admin_users');
       if (saved) {
-        setUserList(JSON.parse(saved));
-        setIsLoading(false);
-        return;
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setUserList(parsed);
+          setIsLoading(false);
+          return;
+        }
       }
     } catch (e) {}
 
-    setUserList(INITIAL_USERS);
+    setUserList(INITIAL_INSTITUTIONAL_USERS);
     setIsLoading(false);
   };
 
   useEffect(() => {
     fetchUsers();
+
+    // Subscribe to Firestore users collection in real time
+    const unsub = subscribeToUsers((firestoreUsers) => {
+      if (firestoreUsers && firestoreUsers.length > 0) {
+        setUserList(firestoreUsers);
+        try {
+          localStorage.setItem('dbit_admin_users', JSON.stringify(firestoreUsers));
+        } catch (e) {}
+      }
+    });
+
+    return () => unsub();
   }, []);
 
   const handleCreateAccount = async (e: React.FormEvent) => {
@@ -260,6 +188,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         localStorage.setItem('dbit_admin_users', JSON.stringify(updated));
       } catch (e) {}
 
+      // Save directly to Cloud Firestore users collection
+      saveUserToFirestore(created);
+
       setSuccessMsg(`Successfully created ${created.role.toUpperCase()} account for ${created.name}!`);
       setShowCreateModal(false);
       setName('');
@@ -283,6 +214,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       try {
         localStorage.setItem('dbit_admin_users', JSON.stringify(updated));
       } catch (e) {}
+
+      // Delete from Cloud Firestore
+      deleteUserFromFirestore(id);
+
       setSuccessMsg(`Account for "${userName}" deleted.`);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to delete account.');
