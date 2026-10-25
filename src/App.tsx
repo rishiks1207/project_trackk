@@ -66,6 +66,12 @@ import {
   INITIAL_HISTORICAL_PROJECTS 
 } from './data/mockData';
 import { getStatusBadgeDetails } from './utils/stateMachine';
+import { 
+  seedFirestoreIfEmpty, 
+  subscribeToProposals, 
+  saveProposalToFirestore, 
+  updateMilestoneInFirestore 
+} from './utils/firestoreSync';
 
 export default function App() {
   // Authentication & active user state
@@ -121,7 +127,7 @@ export default function App() {
     }, 4500);
   };
 
-  // Load initial data from PostgreSQL database
+  // Load initial data from PostgreSQL database and subscribe to Firestore
   useEffect(() => {
     async function loadFromDatabase() {
       try {
@@ -146,6 +152,16 @@ export default function App() {
       }
     }
     loadFromDatabase();
+
+    // Initialize Firestore collections & sync in real-time
+    seedFirestoreIfEmpty();
+    const unsub = subscribeToProposals((firestoreProposals) => {
+      if (firestoreProposals && firestoreProposals.length > 0) {
+        setProposals(firestoreProposals);
+      }
+    });
+
+    return () => unsub();
   }, []);
 
   const handleLoginSuccess = (user: UserAccount) => {
@@ -361,12 +377,13 @@ export default function App() {
     setIsSubmitModalOpen(false);
     setActiveTab('proposals');
 
-    // Save to PostgreSQL backend
+    // Save to PostgreSQL backend & Firestore
     fetch('/api/proposals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(fullProposal)
     }).catch(e => console.warn('Database async sync notice:', e));
+    saveProposalToFirestore(fullProposal);
 
     showToast(`Project Proposal "${fullProposal.title}" registered successfully!`);
   };
@@ -389,6 +406,7 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     }).catch(e => console.warn('Database async milestone update notice:', e));
+    updateMilestoneInFirestore(selectedProposalId, { id: milestoneId, ...updates } as StageGateMilestone);
 
     showToast('Milestone updated and digitally saved.');
   };
