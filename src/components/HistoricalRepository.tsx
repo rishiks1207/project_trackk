@@ -9,7 +9,9 @@ import {
   Award, 
   CheckCircle2, 
   ArrowRight,
-  FolderGit2
+  FolderGit2,
+  PlusCircle,
+  X
 } from 'lucide-react';
 import { HistoricalProject } from '../types';
 import { calculateHybridSimilarity } from '../utils/nlpSimilarity';
@@ -17,16 +19,32 @@ import { calculateHybridSimilarity } from '../utils/nlpSimilarity';
 interface HistoricalRepositoryProps {
   projects: HistoricalProject[];
   onSelectForComparison?: (project: HistoricalProject) => void;
+  onAddArchiveProject?: (project: HistoricalProject) => void;
 }
 
 export const HistoricalRepository: React.FC<HistoricalRepositoryProps> = ({
   projects,
-  onSelectForComparison
+  onSelectForComparison,
+  onAddArchiveProject
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDomain, setSelectedDomain] = useState<string>('All');
   const [selectedYear, setSelectedYear] = useState<string>('All');
   
+  // Add to Archive Modal State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCode, setNewCode] = useState('');
+  const [newAbstract, setNewAbstract] = useState('');
+  const [newDomain, setNewDomain] = useState('AI/ML');
+  const [newYear, setNewYear] = useState('2025-26');
+  const [newCohort, setNewCohort] = useState('TE COMPS A');
+  const [newMembers, setNewMembers] = useState('');
+  const [newGuide, setNewGuide] = useState('Mr. Nazareth Remedios');
+  const [newTech, setNewTech] = useState('');
+  const [newGithub, setNewGithub] = useState('');
+  const [newRating, setNewRating] = useState('A+');
+
   // Quick test idea state
   const [testIdeaInput, setTestIdeaInput] = useState('');
   const [quickTestResult, setQuickTestResult] = useState<{
@@ -104,9 +122,21 @@ export const HistoricalRepository: React.FC<HistoricalRepositoryProps> = ({
             </p>
           </div>
 
-          <div className="text-xs font-mono bg-white/10 px-4 py-2.5 rounded-2xl border border-white/15">
-            <span className="text-white/60 block text-[10px] uppercase font-bold tracking-wider">Archived Records</span>
-            <span className="font-extrabold text-[#D4F938] text-base tabular-nums">{projects.length} Verified Projects</span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="text-xs font-mono bg-white/10 px-4 py-2.5 rounded-2xl border border-white/15">
+              <span className="text-white/60 block text-[10px] uppercase font-bold tracking-wider">Archived Records</span>
+              <span className="font-extrabold text-[#D4F938] text-base tabular-nums">{projects.length} Verified Projects</span>
+            </div>
+            {onAddArchiveProject && (
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-2 bg-[#D4F938] hover:bg-[#c2e72f] text-black font-extrabold text-xs px-5 py-2.5 rounded-full transition-colors shadow-xs cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Add to Archive Database</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -290,6 +320,207 @@ export const HistoricalRepository: React.FC<HistoricalRepositoryProps> = ({
           </div>
         ))}
       </div>
+
+      {/* Add Project to Archive Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#18191E] text-white w-full max-w-xl rounded-[32px] p-6 sm:p-8 shadow-2xl border border-white/10 relative overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div>
+                <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-[#D4F938] text-black font-extrabold uppercase">
+                  Cloud Firestore Database
+                </span>
+                <h3 className="text-lg font-black text-white mt-1">Archive Completed Project</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newTitle.trim() || !newAbstract.trim()) return;
+                const newProject: HistoricalProject = {
+                  id: `dbit-hist-${Date.now()}`,
+                  code: newCode.trim() || `DBIT-TE-2026-T1-G${Math.floor(Math.random() * 20) + 1}`,
+                  title: newTitle.trim(),
+                  abstract: newAbstract.trim(),
+                  domain: newDomain,
+                  academicYear: newYear,
+                  classCohort: newCohort,
+                  groupMembers: newMembers ? newMembers.split(',').map(m => m.trim()) : ['Project Team'],
+                  guideName: newGuide.trim(),
+                  techStack: newTech ? newTech.split(',').map(t => t.trim()) : ['React', 'Python'],
+                  githubUrl: newGithub.trim() || 'https://github.com/dbit-comps/project',
+                  finalRating: newRating,
+                  status: 'Archived'
+                };
+                if (onAddArchiveProject) {
+                  onAddArchiveProject(newProject);
+                }
+                setShowAddModal(false);
+                setNewTitle('');
+                setNewCode('');
+                setNewAbstract('');
+                setNewMembers('');
+                setNewTech('');
+                setNewGithub('');
+              }}
+              className="mt-4 space-y-3.5 overflow-y-auto pr-1 flex-1 text-xs"
+            >
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">Project Title</label>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                  placeholder="e.g. AI Autonomous Drone Navigation for Crop Disease Inspection"
+                  className="w-full px-3.5 py-2.5 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-hidden focus:border-[#D4F938]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Project Code</label>
+                  <input
+                    type="text"
+                    value={newCode}
+                    onChange={e => setNewCode(e.target.value)}
+                    placeholder="DBIT-BE-2025-T3-G09"
+                    className="w-full px-3.5 py-2 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-hidden focus:border-[#D4F938]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Domain</label>
+                  <select
+                    value={newDomain}
+                    onChange={e => setNewDomain(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-hidden focus:border-[#D4F938]"
+                  >
+                    {domains.filter(d => d !== 'All').map(d => (
+                      <option key={d} value={d} className="bg-slate-900 text-white">{d}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Academic Year</label>
+                  <select
+                    value={newYear}
+                    onChange={e => setNewYear(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-hidden focus:border-[#D4F938]"
+                  >
+                    {years.filter(y => y !== 'All').map(y => (
+                      <option key={y} value={y} className="bg-slate-900 text-white">{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Cohort</label>
+                  <input
+                    type="text"
+                    value={newCohort}
+                    onChange={e => setNewCohort(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-white focus:outline-hidden focus:border-[#D4F938]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Rating</label>
+                  <select
+                    value={newRating}
+                    onChange={e => setNewRating(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-hidden focus:border-[#D4F938]"
+                  >
+                    <option value="A+" className="bg-slate-900">A+</option>
+                    <option value="A" className="bg-slate-900">A</option>
+                    <option value="B+" className="bg-slate-900">B+</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">Abstract &amp; Problem Statement</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newAbstract}
+                  onChange={e => setNewAbstract(e.target.value)}
+                  placeholder="Detailed synopsis of technical implementation, novelty, and outcomes..."
+                  className="w-full px-3.5 py-2 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-hidden focus:border-[#D4F938]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">Group Members (comma separated)</label>
+                <input
+                  type="text"
+                  value={newMembers}
+                  onChange={e => setNewMembers(e.target.value)}
+                  placeholder="Siddharth Mehta, Tanya Rao, Aditya Vernekar"
+                  className="w-full px-3.5 py-2 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-hidden focus:border-[#D4F938]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Faculty Guide</label>
+                  <input
+                    type="text"
+                    value={newGuide}
+                    onChange={e => setNewGuide(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-white/10 border border-white/15 rounded-xl text-white focus:outline-hidden focus:border-[#D4F938]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Tech Stack (comma separated)</label>
+                  <input
+                    type="text"
+                    value={newTech}
+                    onChange={e => setNewTech(e.target.value)}
+                    placeholder="Python, TensorFlow, ROS"
+                    className="w-full px-3.5 py-2 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-hidden focus:border-[#D4F938]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">GitHub Repository URL</label>
+                <input
+                  type="url"
+                  value={newGithub}
+                  onChange={e => setNewGithub(e.target.value)}
+                  placeholder="https://github.com/dbit-comps/smart-drone-2025"
+                  className="w-full px-3.5 py-2 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-hidden focus:border-[#D4F938]"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 rounded-full text-slate-300 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-[#D4F938] hover:bg-[#c2e72f] text-black font-extrabold px-6 py-2 rounded-full transition-colors cursor-pointer"
+                >
+                  Save to Archive Database
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

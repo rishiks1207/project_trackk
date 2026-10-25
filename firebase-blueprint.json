@@ -3,40 +3,50 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "DBIT ProjectTrack User profile",
+      "description": "DBIT ProjectTrack User profile and auth account",
       "type": "object",
       "properties": {
+        "id": { "type": "number" },
         "uid": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
+        "password": { "type": "string" },
         "role": { "type": "string", "enum": ["student", "guide", "coordinator", "admin"] },
         "department": { "type": "string" },
-        "groupId": { "type": "string" },
+        "cohort": { "type": "string" },
+        "rollNo": { "type": "string" },
+        "groupNo": { "type": "number" },
+        "trackNo": { "type": "number" },
         "createdAt": { "type": "string" }
       },
       "required": ["uid", "name", "email", "role"]
     },
     "Proposal": {
       "title": "Proposal",
-      "description": "Student engineering project proposal",
+      "description": "Individual student capstone engineering project proposal",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "title": { "type": "string" },
-        "abstract": { "type": "string" },
-        "groupId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "trackNo": { "type": "number" },
+        "groupNo": { "type": "number" },
+        "academicYear": { "type": "string" },
         "cohort": { "type": "string" },
+        "title": { "type": "string" },
         "domain": { "type": "string" },
-        "guideId": { "type": "string" },
+        "abstract": { "type": "string" },
+        "problemStatement": { "type": "string" },
+        "guideName": { "type": "string" },
+        "coordinatorName": { "type": "string" },
         "status": { "type": "string" },
+        "similarityScore": { "type": "number" },
         "sbertScore": { "type": "number" },
-        "cosineSimilarity": { "type": "number" },
-        "noveltyStatus": { "type": "string" },
-        "repositoryUrl": { "type": "string" },
+        "tfidfScore": { "type": "number" },
+        "lockedTopic": { "type": "boolean" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
-      "required": ["id", "title", "groupId", "status"]
+      "required": ["id", "title", "status"]
     },
     "Milestone": {
       "title": "Milestone",
@@ -55,20 +65,49 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "proposalId", "title", "progress", "status"]
+    },
+    "ProjectArchive": {
+      "title": "ProjectArchive",
+      "description": "Archived prior year capstone thesis record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "title": { "type": "string" },
+        "abstract": { "type": "string" },
+        "domain": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "classCohort": { "type": "string" },
+        "groupMembers": { "type": "array", "items": { "type": "string" } },
+        "guideName": { "type": "string" },
+        "techStack": { "type": "array", "items": { "type": "string" } },
+        "githubUrl": { "type": "string" },
+        "finalRating": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "code", "title", "abstract", "domain"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User" },
-      "description": "User profile collection"
+      "description": "User profile & authentication collection"
     },
     "/proposals/{proposalId}": {
       "schema": { "$ref": "#/entities/Proposal" },
-      "description": "Engineering project proposals"
+      "description": "Individual student capstone projects"
     },
     "/proposals/{proposalId}/milestones/{milestoneId}": {
       "schema": { "$ref": "#/entities/Milestone" },
       "description": "Subcollection of experiment milestones for each proposal"
+    },
+    "/project_archive/{projectId}": {
+      "schema": { "$ref": "#/entities/ProjectArchive" },
+      "description": "Archived historical capstone projects"
+    },
+    "/historical_theses/{thesisId}": {
+      "schema": { "$ref": "#/entities/ProjectArchive" },
+      "description": "Historical thesis repository"
     }
   }
 }

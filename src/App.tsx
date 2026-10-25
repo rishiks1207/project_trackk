@@ -69,7 +69,9 @@ import { getStatusBadgeDetails } from './utils/stateMachine';
 import { 
   seedFirestoreIfEmpty, 
   subscribeToProposals, 
+  subscribeToProjectArchive,
   saveProposalToFirestore, 
+  saveArchiveProjectToFirestore,
   updateMilestoneInFirestore 
 } from './utils/firestoreSync';
 
@@ -155,13 +157,22 @@ export default function App() {
 
     // Initialize Firestore collections & sync in real-time
     seedFirestoreIfEmpty();
-    const unsub = subscribeToProposals((firestoreProposals) => {
+    const unsubProposals = subscribeToProposals((firestoreProposals) => {
       if (firestoreProposals && firestoreProposals.length > 0) {
         setProposals(firestoreProposals);
       }
     });
 
-    return () => unsub();
+    const unsubArchive = subscribeToProjectArchive((archiveTheses) => {
+      if (archiveTheses && archiveTheses.length > 0) {
+        setHistoricalProjects(archiveTheses);
+      }
+    });
+
+    return () => {
+      unsubProposals();
+      unsubArchive();
+    };
   }, []);
 
   const handleLoginSuccess = (user: UserAccount) => {
@@ -1243,6 +1254,11 @@ export default function App() {
             <div className="space-y-4">
               <HistoricalRepository
                 projects={historicalProjects}
+                onAddArchiveProject={(newProj) => {
+                  setHistoricalProjects(prev => [newProj, ...prev]);
+                  saveArchiveProjectToFirestore(newProj);
+                  showToast(`Archived project "${newProj.title}" saved to Firestore database!`);
+                }}
               />
             </div>
           )}

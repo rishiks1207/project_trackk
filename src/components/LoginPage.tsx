@@ -17,6 +17,7 @@ import {
   Rocket
 } from 'lucide-react';
 import { UserAccount, UserRole } from '../types';
+import { authenticateUserWithFirestore } from '../utils/firestoreSync';
 
 interface LoginPageProps {
   onLoginSuccess: (user: UserAccount) => void;
@@ -31,66 +32,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const DEFAULT_ACCOUNTS: (UserAccount & { password?: string })[] = [
-    {
-      id: 1,
-      uid: 'usr-admin-01',
-      email: 'admin@dbit.in',
-      password: 'admin123',
-      name: 'Admin',
-      role: 'admin',
-      cohort: 'System Administrator',
-      department: 'Computer Engineering'
-    },
-    {
-      id: 2,
-      uid: 'usr-coord-01',
-      email: 'coordinator@dbit.in',
-      password: 'coord123',
-      name: 'Prof. Meenal Kulkarni',
-      role: 'coordinator',
-      cohort: 'SE/TE Project Coordinator',
-      department: 'Computer Engineering'
-    },
-    {
-      id: 3,
-      uid: 'usr-guide-01',
-      email: 'guide@dbit.in',
-      password: 'guide123',
-      name: 'Mr. Nazareth Remedios',
-      role: 'guide',
-      cohort: 'Faculty Guide',
-      trackNo: 7,
-      department: 'Computer Engineering'
-    },
-    {
-      id: 5,
-      uid: 'usr-stud-01',
-      email: 'rishiks1207@gmail.com',
-      password: 'student123',
-      name: 'Rishik Ezhuthachan',
-      role: 'student',
-      rollNo: '15',
-      cohort: 'SE COMPS C (Batch A)',
-      groupNo: 5,
-      trackNo: 7,
-      department: 'Computer Engineering'
-    },
-    {
-      id: 6,
-      uid: 'usr-stud-01-inst',
-      email: 'student@dbit.in',
-      password: 'student123',
-      name: 'Rishik Ezhuthachan',
-      role: 'student',
-      rollNo: '15',
-      cohort: 'SE COMPS C (Batch A)',
-      groupNo: 5,
-      trackNo: 7,
-      department: 'Computer Engineering'
-    }
-  ];
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,30 +49,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     try {
       let userData: UserAccount | null = null;
 
-      // 1. Attempt API login if running full-stack
+      // 1. Direct Cloud Firestore Database Authentication
       try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: cleanEmail, password: cleanPass })
-        });
-
-        const contentType = res.headers.get('content-type') || '';
-        if (res.ok && contentType.includes('application/json')) {
-          userData = await res.json();
-        }
-      } catch (networkErr) {
-        // Fallback to static client authentication
+        userData = await authenticateUserWithFirestore(cleanEmail, cleanPass);
+      } catch (dbErr) {
+        console.warn('Firestore database auth lookup notice:', dbErr);
       }
 
-      // 2. Client-side verified institutional accounts fallback
+      // 2. Full-stack backend API fallback (if server is running)
       if (!userData) {
-        const matched = DEFAULT_ACCOUNTS.find(
-          u => u.email.toLowerCase() === cleanEmail && u.password === cleanPass
-        );
-        if (matched) {
-          const { password: _, ...safeUser } = matched;
-          userData = safeUser as UserAccount;
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: cleanEmail, password: cleanPass })
+          });
+
+          const contentType = res.headers.get('content-type') || '';
+          if (res.ok && contentType.includes('application/json')) {
+            userData = await res.json();
+          }
+        } catch (networkErr) {
+          // Fallback handled
         }
       }
 
