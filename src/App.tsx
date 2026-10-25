@@ -1007,181 +1007,362 @@ export default function App() {
                   })()}
                 </div>
               ) : (
-                /* ================= FACULTY / ADMIN COHORT OVERVIEW ================= */
-                <div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4 mt-2">
-                    <div>
-                      <h2 className="text-xl font-bold tracking-tight text-slate-900">
-                        {currentRole === 'guide' ? 'My Assigned Student Groups' : 'Active Cohort Submissions'}
-                      </h2>
-                      <p className="text-xs text-slate-500 font-medium">
-                        {currentRole === 'guide'
-                          ? `Proposals under faculty mentorship of ${currentUser?.name || 'Faculty Guide'}`
-                          : 'Verified through automated Sentence-BERT embeddings & TF-IDF lexical matrix'}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setActiveTab('proposals')}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 hover:text-blue-600 bg-white px-3.5 py-2 rounded-full border border-slate-200/80 shadow-xs transition-colors"
-                      >
-                        <span>View All ({proposals.length})</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Domain Quick-Filter Chips */}
-                  <div className="flex items-center gap-2 flex-wrap mb-5 text-xs">
-                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider mr-1">
-                      Filter:
-                    </span>
-                    {['all', 'AI/ML', 'NLP', 'Cloud', 'IoT', 'Security'].map(dom => (
-                      <button
-                        key={dom}
-                        onClick={() => setDomainFilter(dom)}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          domainFilter === dom
-                            ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
-                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
-                        }`}
-                      >
-                        {dom === 'all' ? 'All Domains' : dom}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Proposals Cards Grid */}
-                  {(() => {
-                    const displayedProposals = currentRole === 'guide'
-                      ? filteredProposals.filter(p => 
-                          !currentUser?.name || 
-                          p.guideName.toLowerCase().includes(currentUser.name.toLowerCase()) ||
-                          currentUser.name.toLowerCase().includes(p.guideName.toLowerCase())
-                        )
-                      : filteredProposals;
-
-                    if (currentRole === 'guide' && displayedProposals.length === 0) {
-                      return (
-                        <div className="bg-white rounded-[28px] p-8 shadow-xs border border-slate-200/80 text-center space-y-4">
-                          <div className="w-12 h-12 rounded-2xl bg-[#18191E] text-[#D4F938] flex items-center justify-center mx-auto shadow-md">
-                            <Users className="w-6 h-6" />
-                          </div>
-                          <h3 className="text-xl font-black text-[#18191E]">No Student Groups Assigned to You Yet</h3>
-                          <p className="text-xs text-slate-600 leading-relaxed max-w-lg mx-auto">
-                            You are logged in as {currentUser?.name || 'Faculty Guide'}. There are currently no student project proposals assigned under your guide name. As students submit proposals designating you as their guide, they will appear here for review, SBERT inspection, and stage gate evaluation.
-                          </p>
-                          <button
-                            onClick={() => setActiveTab('proposals')}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#18191E] hover:bg-black text-[#D4F938] text-xs font-bold transition-all cursor-pointer"
-                          >
-                            <span>View All Cohort Proposals</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </button>
+                /* ================= COORDINATOR / FACULTY / ADMIN VIEWS ================= */
+                currentRole === 'coordinator' ? (
+                  /* ================= COORDINATOR OVERVIEW (ONLY ASSIGNED PROJECTS) ================= */
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2 mt-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938] font-black uppercase tracking-wider">
+                            Coordinator Review Console
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">
+                            {currentUser?.name || 'Project Coordinator'}
+                          </span>
                         </div>
+                        <h2 className="text-2xl font-black tracking-tight text-slate-900">
+                          Projects Assigned to You
+                        </h2>
+                        <p className="text-xs text-slate-500 font-medium">
+                          Evaluate milestone deliverables (Approve, Suggest Revisions, Reject), inspect stage gates, and track project timelines.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setActiveTab('proposals')}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 hover:text-black bg-white px-4 py-2 rounded-full border border-slate-200/80 shadow-xs transition-colors cursor-pointer"
+                        >
+                          <span>All Department Proposals ({proposals.length})</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const coordinatorProposals = proposals.filter(p => 
+                        !currentUser?.name || 
+                        p.coordinatorName?.toLowerCase().includes(currentUser.name.toLowerCase()) ||
+                        currentUser.name.toLowerCase().includes(p.coordinatorName?.toLowerCase()) ||
+                        currentUser.email === 'coordinator@dbit.in'
                       );
-                    }
 
-                    return (
-                      <div className="grid grid-cols-1 gap-4">
-                        {displayedProposals.slice(0, 3).map((prop) => {
-                          const badge = getStatusBadgeDetails(prop.status);
-                          const isSelected = selectedProposalId === prop.id;
-                          const sbertVal = Math.round((prop.similarityData?.sbertScore ?? 0.42) * 100);
-                          const lexicalVal = Math.round((prop.similarityData?.tfidfScore ?? 0.35) * 100);
-
-                          return (
-                            <div 
-                              key={prop.id}
-                              className={`bg-white rounded-[28px] p-6 shadow-xs border transition-all duration-200 ${
-                                isSelected ? 'border-[#18191E] ring-2 ring-[#D4F938]' : 'border-slate-200/80 hover:border-slate-400'
-                              }`}
+                      if (coordinatorProposals.length === 0) {
+                        return (
+                          <div className="bg-white rounded-[28px] p-8 shadow-xs border border-slate-200/80 text-center space-y-4">
+                            <div className="w-12 h-12 rounded-2xl bg-[#18191E] text-[#D4F938] flex items-center justify-center mx-auto shadow-md">
+                              <Users className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-black text-[#18191E]">No Projects Assigned to You Yet</h3>
+                            <p className="text-xs text-slate-600 leading-relaxed max-w-lg mx-auto">
+                              You are logged in as {currentUser?.name || 'Project Coordinator'}. No project proposals have been assigned to your coordinator account yet. Department Administrators can allocate projects and designate you as the coordinator in the Admin Panel.
+                            </p>
+                            <button
+                              onClick={() => setActiveTab('proposals')}
+                              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#18191E] hover:bg-black text-[#D4F938] text-xs font-bold transition-all cursor-pointer"
                             >
-                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                <div className="flex-1 space-y-2">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-xs font-mono font-black px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938]">
-                                      {prop.projectId || 'DBIT-SE-2026'}
-                                    </span>
-                                    <span className="text-xs font-semibold text-slate-500">
-                                      Track {prop.trackNo} · Group {prop.groupNo}
-                                    </span>
-                                    <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full ${
-                                      prop.status === 'approved' 
-                                        ? 'bg-[#C6B5FD] text-black' 
-                                        : prop.status === 'flagged_conflict'
-                                          ? 'bg-amber-100 text-amber-950 border border-amber-300'
-                                          : 'bg-[#D4F938] text-black'
-                                    }`}>
-                                      {badge.label}
-                                    </span>
-                                  </div>
+                              <span>Browse All Proposals</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      }
 
-                                  <h3 className="text-lg font-black text-[#18191E] hover:text-black cursor-pointer" onClick={() => setSelectedProposalId(prop.id)}>
-                                    {prop.title}
-                                  </h3>
+                      return (
+                        <div className="grid grid-cols-1 gap-4">
+                          {coordinatorProposals.map((prop) => {
+                            const badge = getStatusBadgeDetails(prop.status);
+                            const isSelected = selectedProposalId === prop.id;
+                            const sbertVal = Math.round((prop.similarityData?.sbertScore ?? 0.42) * 100);
+                            const lexicalVal = Math.round((prop.similarityData?.tfidfScore ?? 0.35) * 100);
 
-                                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                                    {prop.abstract}
-                                  </p>
-
-                                  <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 flex-wrap">
-                                    <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">Team:</span>
-                                    {prop.teamMembers.map((m, idx) => (
-                                      <span key={idx} className="bg-[#F4F5F8] border border-slate-200 rounded-full px-3 py-0.5 text-xs font-bold text-slate-800">
-                                        {m.name} {m.rollNo && `(${m.rollNo})`}
+                            return (
+                              <div 
+                                key={prop.id}
+                                className={`bg-white rounded-[28px] p-6 shadow-xs border transition-all duration-200 ${
+                                  isSelected ? 'border-[#18191E] ring-2 ring-[#D4F938]' : 'border-slate-200/80 hover:border-slate-400'
+                                }`}
+                              >
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                  <div className="flex-1 space-y-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-mono font-black px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938]">
+                                        {prop.projectId || `G${prop.groupNo}`}
                                       </span>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
-                                  <div className="flex items-center gap-3 bg-[#F4F5F8] p-3 rounded-2xl border border-slate-200/80">
-                                    <div>
-                                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT</span>
-                                      <span className="text-sm font-black font-mono text-black">
-                                        {sbertVal}%
+                                      <span className="text-xs font-semibold text-slate-500">
+                                        Track {prop.trackNo} · Group {prop.groupNo}
+                                      </span>
+                                      <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full ${
+                                        prop.status === 'approved' 
+                                          ? 'bg-[#C6B5FD] text-black' 
+                                          : prop.status === 'flagged_conflict'
+                                            ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                            : 'bg-[#D4F938] text-black'
+                                      }`}>
+                                        {badge.label}
+                                      </span>
+                                      <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                                        {prop.domain}
                                       </span>
                                     </div>
-                                    <div className="h-6 w-px bg-slate-300" />
-                                    <div>
-                                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Lexical</span>
-                                      <span className="text-sm font-black font-mono text-black">
-                                        {lexicalVal}%
-                                      </span>
+
+                                    <h3 
+                                      className="text-lg font-black text-[#18191E] hover:text-black cursor-pointer" 
+                                      onClick={() => setSelectedProposalId(prop.id)}
+                                    >
+                                      {prop.title}
+                                    </h3>
+
+                                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                                      {prop.abstract}
+                                    </p>
+
+                                    <div className="flex items-center gap-4 pt-1 text-xs text-slate-600 flex-wrap">
+                                      <div>
+                                        <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider mr-1.5">Guide:</span>
+                                        <span className="font-extrabold text-slate-900">{prop.guideName}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider mr-1">Team:</span>
+                                        {prop.teamMembers.map((m, idx) => (
+                                          <span key={idx} className="bg-[#F4F5F8] border border-slate-200 rounded-full px-3 py-0.5 text-xs font-bold text-slate-800">
+                                            {m.name} {m.rollNo && `(${m.rollNo})`}
+                                          </span>
+                                        ))}
+                                      </div>
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => {
-                                        setSelectedProposalId(prop.id);
-                                        setActiveTab('gantt');
-                                      }}
-                                      className="px-4 py-2 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200"
-                                    >
-                                      Gantt Chart
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setSelectedProposalId(prop.id);
-                                        setActiveTab('stages');
-                                      }}
-                                      className="px-4 py-2 rounded-full bg-[#18191E] hover:bg-black text-xs font-bold text-[#D4F938] transition-colors"
-                                    >
-                                      Stage Gates
-                                    </button>
+                                  <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
+                                    <div className="flex items-center gap-3 bg-[#F4F5F8] p-3 rounded-2xl border border-slate-200/80">
+                                      <div>
+                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT</span>
+                                        <span className="text-sm font-black font-mono text-black">
+                                          {sbertVal}%
+                                        </span>
+                                      </div>
+                                      <div className="h-6 w-px bg-slate-300" />
+                                      <div>
+                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Lexical</span>
+                                        <span className="text-sm font-black font-mono text-black">
+                                          {lexicalVal}%
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button
+                                        onClick={() => {
+                                          setSelectedProposalId(prop.id);
+                                          setActiveTab('stages');
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#18191E] hover:bg-black text-xs font-bold text-[#D4F938] transition-colors shadow-xs cursor-pointer"
+                                        title="Inspect and evaluate Visual Stage Gates"
+                                      >
+                                        <Layers className="w-3.5 h-3.5" />
+                                        <span>Visual Stage Gate</span>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedProposalId(prop.id);
+                                          setActiveTab('gantt');
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200 cursor-pointer"
+                                        title="View Project Tracking Gantt timeline"
+                                      >
+                                        <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                                        <span>Project Tracking</span>
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  /* ================= FACULTY GUIDE / ADMIN COHORT OVERVIEW ================= */
+                  <div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4 mt-2">
+                      <div>
+                        <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                          {currentRole === 'guide' ? 'My Assigned Student Groups' : 'Active Cohort Submissions'}
+                        </h2>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {currentRole === 'guide'
+                            ? `Proposals under faculty mentorship of ${currentUser?.name || 'Faculty Guide'}`
+                            : 'Verified through automated Sentence-BERT embeddings & TF-IDF lexical matrix'}
+                        </p>
                       </div>
-                    );
-                  })()}
-                </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setActiveTab('proposals')}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 hover:text-blue-600 bg-white px-3.5 py-2 rounded-full border border-slate-200/80 shadow-xs transition-colors"
+                        >
+                          <span>View All ({proposals.length})</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Domain Quick-Filter Chips */}
+                    <div className="flex items-center gap-2 flex-wrap mb-5 text-xs">
+                      <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider mr-1">
+                        Filter:
+                      </span>
+                      {['all', 'AI/ML', 'NLP', 'Cloud', 'IoT', 'Security'].map(dom => (
+                        <button
+                          key={dom}
+                          onClick={() => setDomainFilter(dom)}
+                          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                            domainFilter === dom
+                              ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
+                              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                          }`}
+                        >
+                          {dom === 'all' ? 'All Domains' : dom}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Proposals Cards Grid */}
+                    {(() => {
+                      const displayedProposals = currentRole === 'guide'
+                        ? filteredProposals.filter(p => 
+                            !currentUser?.name || 
+                            p.guideName.toLowerCase().includes(currentUser.name.toLowerCase()) ||
+                            currentUser.name.toLowerCase().includes(p.guideName.toLowerCase())
+                          )
+                        : filteredProposals;
+
+                      if (currentRole === 'guide' && displayedProposals.length === 0) {
+                        return (
+                          <div className="bg-white rounded-[28px] p-8 shadow-xs border border-slate-200/80 text-center space-y-4">
+                            <div className="w-12 h-12 rounded-2xl bg-[#18191E] text-[#D4F938] flex items-center justify-center mx-auto shadow-md">
+                              <Users className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-black text-[#18191E]">No Student Groups Assigned to You Yet</h3>
+                            <p className="text-xs text-slate-600 leading-relaxed max-w-lg mx-auto">
+                              You are logged in as {currentUser?.name || 'Faculty Guide'}. There are currently no student project proposals assigned under your guide name. As students submit proposals designating you as their guide, they will appear here for review, SBERT inspection, and stage gate evaluation.
+                            </p>
+                            <button
+                              onClick={() => setActiveTab('proposals')}
+                              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#18191E] hover:bg-black text-[#D4F938] text-xs font-bold transition-all cursor-pointer"
+                            >
+                              <span>View All Cohort Proposals</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 gap-4">
+                          {displayedProposals.slice(0, 3).map((prop) => {
+                            const badge = getStatusBadgeDetails(prop.status);
+                            const isSelected = selectedProposalId === prop.id;
+                            const sbertVal = Math.round((prop.similarityData?.sbertScore ?? 0.42) * 100);
+                            const lexicalVal = Math.round((prop.similarityData?.tfidfScore ?? 0.35) * 100);
+
+                            return (
+                              <div 
+                                key={prop.id}
+                                className={`bg-white rounded-[28px] p-6 shadow-xs border transition-all duration-200 ${
+                                  isSelected ? 'border-[#18191E] ring-2 ring-[#D4F938]' : 'border-slate-200/80 hover:border-slate-400'
+                                }`}
+                              >
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                  <div className="flex-1 space-y-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-mono font-black px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938]">
+                                        {prop.projectId || 'DBIT-SE-2026'}
+                                      </span>
+                                      <span className="text-xs font-semibold text-slate-500">
+                                        Track {prop.trackNo} · Group {prop.groupNo}
+                                      </span>
+                                      <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full ${
+                                        prop.status === 'approved' 
+                                          ? 'bg-[#C6B5FD] text-black' 
+                                          : prop.status === 'flagged_conflict'
+                                            ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                            : 'bg-[#D4F938] text-black'
+                                      }`}>
+                                        {badge.label}
+                                      </span>
+                                    </div>
+
+                                    <h3 className="text-lg font-black text-[#18191E] hover:text-black cursor-pointer" onClick={() => setSelectedProposalId(prop.id)}>
+                                      {prop.title}
+                                    </h3>
+
+                                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                                      {prop.abstract}
+                                    </p>
+
+                                    <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 flex-wrap">
+                                      <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">Team:</span>
+                                      {prop.teamMembers.map((m, idx) => (
+                                        <span key={idx} className="bg-[#F4F5F8] border border-slate-200 rounded-full px-3 py-0.5 text-xs font-bold text-slate-800">
+                                          {m.name} {m.rollNo && `(${m.rollNo})`}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
+                                    <div className="flex items-center gap-3 bg-[#F4F5F8] p-3 rounded-2xl border border-slate-200/80">
+                                      <div>
+                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT</span>
+                                        <span className="text-sm font-black font-mono text-black">
+                                          {sbertVal}%
+                                        </span>
+                                      </div>
+                                      <div className="h-6 w-px bg-slate-300" />
+                                      <div>
+                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Lexical</span>
+                                        <span className="text-sm font-black font-mono text-black">
+                                          {lexicalVal}%
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => {
+                                          setSelectedProposalId(prop.id);
+                                          setActiveTab('stages');
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#18191E] hover:bg-black text-xs font-bold text-[#D4F938] transition-colors"
+                                      >
+                                        <Layers className="w-3.5 h-3.5" />
+                                        <span>Visual Stage Gate</span>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedProposalId(prop.id);
+                                          setActiveTab('gantt');
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200"
+                                      >
+                                        <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                                        <span>Project Tracking</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )
               )}
             </div>
           )}
@@ -1312,20 +1493,24 @@ export default function App() {
                             <button
                               onClick={() => {
                                 setSelectedProposalId(prop.id);
-                                setActiveTab('gantt');
+                                setActiveTab('stages');
                               }}
-                              className="px-4 py-2 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200 cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#18191E] hover:bg-black text-xs font-bold text-[#D4F938] transition-colors shadow-xs cursor-pointer"
+                              title="Visual Stage Gate"
                             >
-                              Gantt Chart
+                              <Layers className="w-3.5 h-3.5" />
+                              <span>Visual Stage Gate</span>
                             </button>
                             <button
                               onClick={() => {
                                 setSelectedProposalId(prop.id);
-                                setActiveTab('stages');
+                                setActiveTab('gantt');
                               }}
-                              className="px-4 py-2 rounded-full bg-[#18191E] hover:bg-black text-xs font-bold text-[#D4F938] transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200 cursor-pointer"
+                              title="Project Tracking"
                             >
-                              Stage Gates
+                              <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                              <span>Project Tracking</span>
                             </button>
                           </div>
                         </div>
@@ -1395,6 +1580,9 @@ export default function App() {
                   currentRole={currentRole}
                   onUpdateMilestone={handleUpdateMilestone}
                   onUpdateGitHubData={handleUpdateGitHubData}
+                  proposals={proposals}
+                  onSelectProposal={setSelectedProposalId}
+                  onNavigateToProposals={() => setActiveTab('proposals')}
                 />
               )}
             </div>
@@ -1447,6 +1635,11 @@ export default function App() {
                 proposals={proposals}
                 onSelectProposal={setSelectedProposalId}
                 onNavigateToTab={setActiveTab}
+                onUpdateProposal={(updated) => {
+                  setProposals(prev => prev.map(p => p.id === updated.id ? updated : p));
+                  saveProposalToFirestore(updated);
+                  showToast(`Allocated ${updated.projectId}: Guide -> ${updated.guideName}, Coordinator -> ${updated.coordinatorName}`);
+                }}
               />
             </div>
           )}

@@ -9,10 +9,15 @@ import {
   ShieldCheck, 
   Stamp, 
   Upload, 
-  Edit3,
-  Calendar,
-  Sparkles,
-  GitBranch
+  Edit3, 
+  Calendar, 
+  Sparkles, 
+  GitBranch,
+  XCircle,
+  RotateCcw,
+  Layers,
+  ChevronDown,
+  FolderGit2
 } from 'lucide-react';
 import { ProjectProposal, StageGateMilestone, UserRole, GitHubSyncData } from '../types';
 import { GitHubSyncPanel } from './GitHubSyncPanel';
@@ -23,13 +28,19 @@ interface StageGateTrackerProps {
   onUpdateMilestone: (milestoneId: string, updates: Partial<StageGateMilestone>) => void;
   onUpdateGitHubData: (data: GitHubSyncData) => void;
   onAdvanceProposalState?: () => void;
+  proposals?: ProjectProposal[];
+  onSelectProposal?: (proposalId: string) => void;
+  onNavigateToProposals?: () => void;
 }
 
 export const StageGateTracker: React.FC<StageGateTrackerProps> = ({
   proposal,
   currentRole,
   onUpdateMilestone,
-  onUpdateGitHubData
+  onUpdateGitHubData,
+  proposals,
+  onSelectProposal,
+  onNavigateToProposals
 }) => {
   const gates = proposal?.stageGates || [];
   const [selectedMilestone, setSelectedMilestone] = useState<StageGateMilestone | null>(
@@ -38,6 +49,8 @@ export const StageGateTracker: React.FC<StageGateTrackerProps> = ({
 
   const [deliverableUrl, setDeliverableUrl] = useState('');
   const [submissionNotes, setSubmissionNotes] = useState('');
+  const [revisionNotes, setRevisionNotes] = useState('');
+  const [decisionFeedback, setDecisionFeedback] = useState<string | null>(null);
 
   // Stats
   const approvedCount = gates.filter(m => m.status === 'approved').length;
@@ -49,6 +62,15 @@ export const StageGateTracker: React.FC<StageGateTrackerProps> = ({
       <div className="bg-white rounded-[28px] p-8 text-center border border-slate-200/80 shadow-xs max-w-lg mx-auto my-12 space-y-3">
         <p className="text-base font-black text-slate-800">No Stage Gate Milestones Available</p>
         <p className="text-xs text-slate-500">Please select or submit an active proposal with registered stage gates.</p>
+        {onNavigateToProposals && (
+          <button
+            onClick={onNavigateToProposals}
+            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#18191E] text-[#D4F938] text-xs font-bold"
+          >
+            <span>Back to Proposals</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     );
   }
@@ -70,27 +92,82 @@ export const StageGateTracker: React.FC<StageGateTrackerProps> = ({
       submissionNotes: submissionNotes || selectedMilestone.submissionNotes,
       submissionDate: new Date().toISOString()
     });
+    setDecisionFeedback('Deliverable submitted successfully for faculty review.');
+    setTimeout(() => setDecisionFeedback(null), 4000);
   };
 
-  const handleFacultySignOff = (milestoneId: string, approve: boolean) => {
-    const approverName = currentRole === 'coordinator' ? proposal.coordinatorName : proposal.guideName;
+  const handleFacultyDecision = (action: 'approve' | 'revision' | 'reject') => {
+    if (!selectedMilestone) return;
+    const approverName = currentRole === 'coordinator' 
+      ? (proposal.coordinatorName || 'Coordinator') 
+      : (proposal.guideName || 'Faculty Guide');
     
-    if (approve) {
-      onUpdateMilestone(milestoneId, {
+    if (action === 'approve') {
+      onUpdateMilestone(selectedMilestone.id, {
         status: 'approved',
         guideApprovedBy: approverName,
-        guideApprovedDate: new Date().toISOString()
+        guideApprovedDate: new Date().toISOString(),
+        submissionNotes: revisionNotes ? `Approved notes: ${revisionNotes}` : selectedMilestone.submissionNotes
       });
-    } else {
-      onUpdateMilestone(milestoneId, {
+      setDecisionFeedback(`Milestone approved and signed off by ${approverName}.`);
+    } else if (action === 'revision') {
+      onUpdateMilestone(selectedMilestone.id, {
         status: 'revision',
-        submissionNotes: 'Revision requested by ' + approverName
+        submissionNotes: revisionNotes ? `Revision requested: ${revisionNotes}` : `Revisions suggested by ${approverName}`
       });
+      setDecisionFeedback(`Revision request sent to student team.`);
+    } else if (action === 'reject') {
+      onUpdateMilestone(selectedMilestone.id, {
+        status: 'rejected',
+        submissionNotes: revisionNotes ? `Rejected: ${revisionNotes}` : `Deliverable rejected by ${approverName}`
+      });
+      setDecisionFeedback(`Milestone marked as rejected with coordinator remarks.`);
     }
+
+    setRevisionNotes('');
+    setTimeout(() => setDecisionFeedback(null), 4000);
   };
 
   return (
     <div className="space-y-6">
+      {/* Project Switcher Bar if multiple proposals */}
+      {proposals && proposals.length > 0 && onSelectProposal && (
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-slate-700" />
+            <span className="font-bold text-slate-500">Visual Stage Gate for:</span>
+            <span className="font-extrabold text-[#18191E]">{proposal.title}</span>
+            <span className="font-mono text-[11px] bg-[#18191E] text-[#D4F938] px-2 py-0.5 rounded-full font-bold">
+              {proposal.projectId}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 font-semibold text-[11px]">Switch Project:</span>
+            <select
+              value={proposal.id}
+              onChange={e => onSelectProposal(e.target.value)}
+              className="bg-[#F4F5F8] border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#D4F938] cursor-pointer"
+            >
+              {proposals.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.projectId} - {p.title.slice(0, 32)}...
+                </option>
+              ))}
+            </select>
+            {onNavigateToProposals && (
+              <button
+                type="button"
+                onClick={onNavigateToProposals}
+                className="px-3 py-1.5 rounded-xl bg-[#18191E] hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Proposals Directory
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Top Progress Overview Card */}
       <div className="bg-[#18191E] text-white rounded-[28px] p-6 sm:p-7 shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-[#D4F938]/10 rounded-full blur-3xl pointer-events-none" />
@@ -322,76 +399,145 @@ export const StageGateTracker: React.FC<StageGateTrackerProps> = ({
                 </div>
               </div>
 
-              {/* Student Submit / Edit Deliverable Action */}
-              <div className="pt-2 border-t border-slate-100 space-y-3">
-                <span className="font-bold text-[#18191E] block uppercase text-[10px] tracking-wider">
-                  Deliverable Submission
-                </span>
+              {/* Decision Feedback Banner */}
+              {decisionFeedback && (
+                <div className="p-3 bg-[#D4F938]/20 border border-[#D4F938] rounded-xl text-xs font-bold text-slate-900 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-800 shrink-0" />
+                  <span>{decisionFeedback}</span>
+                </div>
+              )}
 
-                <div className="space-y-2.5">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      Deliverable URL / GitHub Link
-                    </label>
-                    <input
-                      type="text"
-                      value={deliverableUrl}
-                      onChange={e => setDeliverableUrl(e.target.value)}
-                      placeholder={selectedMilestone.submissionLink || 'https://github.com/... or Google Drive URL'}
-                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-[#F4F5F8] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
-                    />
+              {/* Student ONLY: Submit / Edit Deliverable Action */}
+              {currentRole === 'student' && (
+                <div className="pt-2 border-t border-slate-100 space-y-3">
+                  <span className="font-bold text-[#18191E] block uppercase text-[10px] tracking-wider">
+                    Student Deliverable Submission
+                  </span>
+
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Deliverable URL / GitHub Link
+                      </label>
+                      <input
+                        type="text"
+                        value={deliverableUrl}
+                        onChange={e => setDeliverableUrl(e.target.value)}
+                        placeholder={selectedMilestone.submissionLink || 'https://github.com/... or Google Drive URL'}
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-[#F4F5F8] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Deliverable Notes / Verification Details
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={submissionNotes}
+                        onChange={e => setSubmissionNotes(e.target.value)}
+                        placeholder="Add summary of milestone completion or link GitHub commit SHA..."
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-[#F4F5F8] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSubmitDeliverable}
+                      className="w-full bg-[#D4F938] hover:bg-[#c2e72f] text-black font-extrabold py-2.5 rounded-full transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>Upload &amp; Submit Deliverable</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Faculty Guide / Coordinator Evaluation & Decision Controls (NEVER asks deliverables) */}
+              {(currentRole === 'guide' || currentRole === 'coordinator') && (
+                <div className="pt-3 border-t border-slate-200 bg-[#18191E] text-white p-5 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-white font-bold">
+                      <ShieldCheck className="w-4 h-4 text-[#D4F938]" />
+                      <span className="text-xs uppercase tracking-wider">
+                        {currentRole === 'coordinator' ? 'Coordinator Gate Evaluation' : 'Faculty Guide Review'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                      Role: {currentRole}
+                    </span>
                   </div>
 
+                  <p className="text-[11px] text-white/70">
+                    Evaluate the student submission below. You can approve the gate, suggest technical revisions, or reject deliverables.
+                  </p>
+
+                  {/* Inspection of Student Deliverables */}
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-[11px] space-y-1.5">
+                    <span className="text-slate-400 font-bold uppercase text-[9px] block">Submitted Artifact:</span>
+                    {selectedMilestone.submissionLink ? (
+                      <a
+                        href={selectedMilestone.submissionLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[#D4F938] hover:underline flex items-center gap-1.5 truncate font-mono font-bold"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{selectedMilestone.submissionLink}</span>
+                      </a>
+                    ) : (
+                      <span className="text-amber-300 font-medium">Awaiting deliverable submission from student team.</span>
+                    )}
+
+                    {selectedMilestone.submissionNotes && (
+                      <p className="text-slate-300 italic text-[11px] mt-1 pt-1 border-t border-white/10">
+                        &ldquo;{selectedMilestone.submissionNotes}&rdquo;
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Revision / Feedback Remarks Textarea */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      Deliverable Notes / Verification Details
+                    <label className="block text-[10px] uppercase font-bold text-slate-300 mb-1">
+                      Review Remarks / Revision Instructions
                     </label>
                     <textarea
                       rows={2}
-                      value={submissionNotes}
-                      onChange={e => setSubmissionNotes(e.target.value)}
-                      placeholder="Add summary of milestone completion or link GitHub commit SHA..."
-                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-[#F4F5F8] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
+                      value={revisionNotes}
+                      onChange={e => setRevisionNotes(e.target.value)}
+                      placeholder="Enter feedback, required revisions, or approval remarks for the student team..."
+                      className="w-full px-3 py-2 border border-white/20 rounded-xl text-xs bg-white/10 text-white placeholder:text-white/40 focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
                     />
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleSubmitDeliverable}
-                    className="w-full bg-[#D4F938] hover:bg-[#c2e72f] text-black font-extrabold py-2.5 rounded-full transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                  >
-                    <Upload className="w-4 h-4" />
-                    <span>Upload &amp; Submit Deliverable</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Faculty Guide / Coordinator Sign-Off Controls */}
-              {(currentRole === 'guide' || currentRole === 'coordinator') && (
-                <div className="pt-3 border-t border-slate-200 bg-[#18191E] text-white p-4 rounded-2xl space-y-2">
-                  <div className="flex items-center gap-1.5 text-white font-bold">
-                    <ShieldCheck className="w-4 h-4 text-[#D4F938]" />
-                    <span>Faculty Gate Sign-Off (Role: {currentRole})</span>
-                  </div>
-                  <p className="text-[11px] text-white/70">
-                    Sign off on deliverable or request technical revisions.
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-2 pt-1">
+                  {/* 3 Clear Decision Actions for Coordinator / Guide */}
+                  <div className="grid grid-cols-3 gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={() => handleFacultySignOff(selectedMilestone.id, true)}
-                      className="bg-[#D4F938] hover:bg-[#c2e72f] text-black font-extrabold py-2 px-3 rounded-full text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      onClick={() => handleFacultyDecision('approve')}
+                      className="bg-[#D4F938] hover:bg-[#c2e72f] text-black font-extrabold py-2.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1 transition-all shadow-xs cursor-pointer"
+                      title="Approve milestone and clear stage gate"
                     >
-                      <Stamp className="w-3.5 h-3.5" />
-                      <span>Approve &amp; Sign</span>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Approve</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleFacultySignOff(selectedMilestone.id, false)}
-                      className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-3 rounded-full text-xs transition-colors cursor-pointer"
+                      onClick={() => handleFacultyDecision('revision')}
+                      className="bg-amber-400 hover:bg-amber-300 text-black font-extrabold py-2.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1 transition-all shadow-xs cursor-pointer"
+                      title="Suggest technical revisions for student team"
                     >
-                      Request Revision
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Revisions</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleFacultyDecision('reject')}
+                      className="bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-2.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1 transition-all shadow-xs cursor-pointer"
+                      title="Reject submitted deliverables"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Reject</span>
                     </button>
                   </div>
                 </div>

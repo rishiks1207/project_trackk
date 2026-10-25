@@ -85,7 +85,7 @@ export interface StageGateMilestone {
   title: string;
   phase: StagePhase;
   weekRange: string;
-  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'revision';
+  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'revision' | 'rejected';
   dueDate: string;
   submissionLink?: string;
   submissionNotes?: string;

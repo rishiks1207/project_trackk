@@ -17,27 +17,36 @@ import {
   ArrowRight,
   Sparkles,
   Link2,
-  X
+  X,
+  Layers,
+  Calendar,
+  UserCog,
+  Check,
+  GitBranch
 } from 'lucide-react';
 import { UserAccount, UserRole, ProjectProposal } from '../types';
 import { 
   INITIAL_INSTITUTIONAL_USERS, 
   subscribeToUsers, 
   saveUserToFirestore, 
-  deleteUserFromFirestore 
+  deleteUserFromFirestore,
+  saveProposalToFirestore
 } from '../utils/firestoreSync';
 
 interface AdminPanelProps {
   proposals: ProjectProposal[];
   onSelectProposal: (proposalId: string) => void;
   onNavigateToTab: (tab: string) => void;
+  onUpdateProposal?: (proposal: ProjectProposal) => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   proposals,
   onSelectProposal,
-  onNavigateToTab
+  onNavigateToTab,
+  onUpdateProposal
 }) => {
+  const [activeSection, setActiveSection] = useState<'users' | 'allocations'>('users');
   const [userList, setUserList] = useState<UserAccount[]>(() => {
     try {
       const saved = localStorage.getItem('dbit_admin_users');
@@ -53,6 +62,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Project Allocation Modal State
+  const [selectedPropToAssign, setSelectedPropToAssign] = useState<ProjectProposal | null>(null);
+  const [assignedGuideName, setAssignedGuideName] = useState('');
+  const [assignedCoordName, setAssignedCoordName] = useState('');
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
   // Password Edit State
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
@@ -265,6 +280,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const guideCount = userList.filter(u => u.role === 'guide').length;
   const coordCount = userList.filter(u => u.role === 'coordinator').length;
 
+  const guidesList = userList.filter(u => u.role === 'guide');
+  const coordList = userList.filter(u => u.role === 'coordinator');
+
+  const handleAssignAllocation = (proposalId: string, newGuide: string, newCoord: string) => {
+    const targetProp = proposals.find(p => p.id === proposalId);
+    if (!targetProp) return;
+
+    const updated: ProjectProposal = {
+      ...targetProp,
+      guideName: newGuide || targetProp.guideName,
+      coordinatorName: newCoord || targetProp.coordinatorName || 'Prof. Meenal Kulkarni',
+      updatedAt: new Date().toISOString()
+    };
+
+    saveProposalToFirestore(updated);
+    if (onUpdateProposal) {
+      onUpdateProposal(updated);
+    }
+    setSuccessMsg(`Allocated ${updated.projectId}: Guide -> "${updated.guideName}", Coordinator -> "${updated.coordinatorName}"`);
+    setTimeout(() => setSuccessMsg(null), 4000);
+    setShowAssignModal(false);
+  };
+
   return (
     <div className="space-y-6">
       
@@ -278,24 +316,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </span>
               <span className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full">
                 <Database className="w-3.5 h-3.5 text-[#D4F938]" />
-                <span>Cloud SQL Relational Storage</span>
+                <span>Cloud SQL &amp; Firestore Relational Sync</span>
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Department User Account Management &amp; Project Relations
+              Institutional User Accounts &amp; Faculty Allocations
             </h2>
             <p className="text-xs text-slate-400 mt-1">
-              Provision accounts for Students, Faculty Guides, and Coordinators with linked project proposal tables
+              Provision accounts, assign Faculty Guides &amp; Coordinators to projects, and configure stage gate workflows
             </p>
           </div>
 
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 bg-[#D4F938] hover:bg-[#cbf525] text-slate-950 text-xs font-black px-5 py-3 rounded-full shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Create New User Account</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {activeSection === 'users' ? (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 bg-[#D4F938] hover:bg-[#cbf525] text-slate-950 text-xs font-black px-5 py-3 rounded-full shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Create New User Account</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (proposals.length > 0) {
+                    setSelectedPropToAssign(proposals[0]);
+                    setAssignedGuideName(proposals[0].guideName || (guidesList[0]?.name ?? ''));
+                    setAssignedCoordName(proposals[0].coordinatorName || (coordList[0]?.name ?? 'Prof. Meenal Kulkarni'));
+                    setShowAssignModal(true);
+                  }
+                }}
+                className="inline-flex items-center gap-2 bg-[#D4F938] hover:bg-[#cbf525] text-slate-950 text-xs font-black px-5 py-3 rounded-full shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <UserCog className="w-4 h-4" />
+                <span>Assign Guide &amp; Coordinator</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 4 Stat Cards in Bento Colors */}
@@ -303,27 +360,56 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-sm">
             <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Total Accounts</span>
             <div className="text-3xl font-black text-slate-900 mt-1 font-mono tabular-nums">{userList.length}</div>
-            <span className="text-[11px] text-slate-500 font-medium">in PostgreSQL</span>
-          </div>
-
-          <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-sm">
-            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Students</span>
-            <div className="text-3xl font-black text-slate-900 mt-1 font-mono tabular-nums">{studentCount}</div>
-            <span className="text-[11px] text-[#C6B5FD] font-bold">Submissions &amp; SBERT</span>
+            <span className="text-[11px] text-slate-500 font-medium">in Firestore DB</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-sm">
             <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Faculty Guides</span>
             <div className="text-3xl font-black text-slate-900 mt-1 font-mono tabular-nums">{guideCount}</div>
-            <span className="text-[11px] text-[#D4F938] font-bold">Sign-offs &amp; Texts</span>
+            <span className="text-[11px] text-[#D4F938] font-bold">Mentorship &amp; Review</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-sm">
             <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Coordinators</span>
             <div className="text-3xl font-black text-slate-900 mt-1 font-mono tabular-nums">{coordCount}</div>
-            <span className="text-[11px] text-slate-900 font-bold">Arbitration &amp; Awards</span>
+            <span className="text-[11px] text-slate-900 font-bold">Arbitration &amp; Approval</span>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-sm">
+            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Capstones &amp; Projects</span>
+            <div className="text-3xl font-black text-slate-900 mt-1 font-mono tabular-nums">{proposals.length}</div>
+            <span className="text-[11px] text-[#C6B5FD] font-bold">Active Submissions</span>
           </div>
         </div>
+      </div>
+
+      {/* Switcher: User Accounts vs Project Allocations */}
+      <div className="flex items-center gap-2 bg-white rounded-2xl p-2 border border-slate-200/80 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setActiveSection('users')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            activeSection === 'users'
+              ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>User Accounts &amp; Roles ({userList.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSection('allocations')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            activeSection === 'allocations'
+              ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <UserCog className="w-4 h-4" />
+          <span>Project &amp; Faculty Allocations ({proposals.length} Projects)</span>
+        </button>
       </div>
 
       {/* Notifications */}
@@ -340,183 +426,472 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* Search and Filters Bar */}
-      <div className="bg-white rounded-3xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs border border-slate-100">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search by name, email, roll number, or cohort..."
-            className="w-full pl-11 pr-4 py-2.5 bg-[#F4F5F8] rounded-full text-slate-800 placeholder-slate-400 border border-slate-200/60 focus:outline-hidden focus:ring-2 focus:ring-[#D4F938] font-medium"
-          />
-        </div>
+      {activeSection === 'users' ? (
+        <>
+          {/* Search and Filters Bar */}
+          <div className="bg-white rounded-3xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs border border-slate-100">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search by name, email, roll number, or cohort..."
+                className="w-full pl-11 pr-4 py-2.5 bg-[#F4F5F8] rounded-full text-slate-800 placeholder-slate-400 border border-slate-200/60 focus:outline-hidden focus:ring-2 focus:ring-[#D4F938] font-medium"
+              />
+            </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-slate-400 font-bold text-[11px] uppercase tracking-wider">Role:</span>
-          <select
-            value={roleFilter}
-            onChange={e => setRoleFilter(e.target.value)}
-            className="px-4 py-2 bg-[#F4F5F8] border border-slate-200/60 rounded-full font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
-          >
-            <option value="all">All Roles ({userList.length})</option>
-            <option value="student">Students ({studentCount})</option>
-            <option value="guide">Faculty Guides ({guideCount})</option>
-            <option value="coordinator">Coordinators ({coordCount})</option>
-            <option value="admin">Administrators</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Database Table Card */}
-      <div className="bg-white rounded-3xl shadow-xs border border-slate-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-slate-900" />
-            <h3 className="font-extrabold text-sm text-slate-900 tracking-tight">
-              Database User Accounts &amp; Related Projects
-            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 font-bold text-[11px] uppercase tracking-wider">Role:</span>
+              <select
+                value={roleFilter}
+                onChange={e => setRoleFilter(e.target.value)}
+                className="px-4 py-2 bg-[#F4F5F8] border border-slate-200/60 rounded-full font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
+              >
+                <option value="all">All Roles ({userList.length})</option>
+                <option value="student">Students ({studentCount})</option>
+                <option value="guide">Faculty Guides ({guideCount})</option>
+                <option value="coordinator">Coordinators ({coordCount})</option>
+                <option value="admin">Administrators</option>
+              </select>
+            </div>
           </div>
-          <span className="text-[10px] font-mono text-slate-400 font-semibold">
-            PostgreSQL • users table
-          </span>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#F4F5F8] text-slate-400 uppercase text-[10px] font-black tracking-wider border-b border-slate-100">
-              <tr>
-                <th className="p-4 pl-6">User Profile</th>
-                <th className="p-4">Role</th>
-                <th className="p-4">Cohort &amp; Details</th>
-                <th className="p-4">Relational Project Linkage</th>
-                <th className="p-4 pr-6 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map(user => {
-                  const matchingProposal = proposals.find(p => 
-                    p.teamMembers.some(m => m.email.toLowerCase() === user.email.toLowerCase()) ||
-                    p.guideName.toLowerCase().includes(user.name.toLowerCase()) ||
-                    (user.groupNo && p.groupNo === user.groupNo)
-                  );
+          {/* Database Table Card */}
+          <div className="bg-white rounded-3xl shadow-xs border border-slate-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-slate-900" />
+                <h3 className="font-extrabold text-sm text-slate-900 tracking-tight">
+                  Database User Accounts &amp; Related Projects
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono text-slate-400 font-semibold">
+                PostgreSQL • users table
+              </span>
+            </div>
 
-                  return (
-                    <tr key={user.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* Name & Email */}
-                      <td className="p-4 pl-6">
-                        <div className="font-extrabold text-slate-900">{user.name}</div>
-                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">{user.email}</div>
-                      </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#F4F5F8] text-slate-400 uppercase text-[10px] font-black tracking-wider border-b border-slate-100">
+                  <tr>
+                    <th className="p-4 pl-6">User Profile</th>
+                    <th className="p-4">Role</th>
+                    <th className="p-4">Cohort &amp; Details</th>
+                    <th className="p-4">Relational Project Linkage</th>
+                    <th className="p-4 pr-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map(user => {
+                      const matchingProposal = proposals.find(p => 
+                        p.teamMembers.some(m => m.email.toLowerCase() === user.email.toLowerCase()) ||
+                        p.guideName.toLowerCase().includes(user.name.toLowerCase()) ||
+                        (user.groupNo && p.groupNo === user.groupNo)
+                      );
 
-                      {/* Role Badge */}
-                      <td className="p-4">
-                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                          user.role === 'admin'
-                            ? 'bg-[#18191E] text-white'
-                            : user.role === 'coordinator'
-                              ? 'bg-[#18191E] text-[#D4F938]'
-                              : user.role === 'guide'
-                                ? 'bg-[#C6B5FD] text-slate-900'
-                                : 'bg-slate-100 text-slate-800'
-                        }`}>
-                          {user.role}
-                        </span>
-                      </td>
+                      return (
+                        <tr key={user.id} className="hover:bg-slate-50/70 transition-colors">
+                          {/* Name & Email */}
+                          <td className="p-4 pl-6">
+                            <div className="font-extrabold text-slate-900">{user.name}</div>
+                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">{user.email}</div>
+                          </td>
 
-                      {/* Cohort / Roll / Group */}
-                      <td className="p-4 text-slate-700">
-                        <div className="font-semibold">{user.cohort || 'DBIT Department'}</div>
-                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                          {user.rollNo && <span>Roll: {user.rollNo} • </span>}
-                          {user.groupNo && <span>Group: {user.groupNo} • </span>}
-                          {user.trackNo && <span>Track: {user.trackNo}</span>}
-                        </div>
-                      </td>
+                          {/* Role Badge */}
+                          <td className="p-4">
+                            <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                              user.role === 'admin'
+                                ? 'bg-[#18191E] text-white'
+                                : user.role === 'coordinator'
+                                  ? 'bg-[#18191E] text-[#D4F938]'
+                                  : user.role === 'guide'
+                                    ? 'bg-[#C6B5FD] text-slate-900'
+                                    : 'bg-slate-100 text-slate-800'
+                            }`}>
+                              {user.role}
+                            </span>
+                          </td>
 
-                      {/* Relational Project Linkage */}
-                      <td className="p-4">
-                        {matchingProposal ? (
-                          <div className="flex items-center gap-2">
-                            <Link2 className="w-3.5 h-3.5 text-slate-900 shrink-0" />
-                            <div className="max-w-xs truncate">
-                              <span className="font-mono text-[10px] font-bold text-slate-900 mr-1.5">
-                                {matchingProposal.projectId || `G${matchingProposal.groupNo}`}
-                              </span>
-                              <span className="text-slate-600 font-medium truncate">
-                                {matchingProposal.title}
-                              </span>
+                          {/* Cohort / Roll / Group */}
+                          <td className="p-4 text-slate-700">
+                            <div className="font-semibold">{user.cohort || 'DBIT Department'}</div>
+                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                              {user.rollNo && <span>Roll: {user.rollNo} • </span>}
+                              {user.groupNo && <span>Group: {user.groupNo} • </span>}
+                              {user.trackNo && <span>Track: {user.trackNo}</span>}
                             </div>
+                          </td>
+
+                          {/* Relational Project Linkage */}
+                          <td className="p-4">
+                            {matchingProposal ? (
+                              <div className="flex items-center gap-2">
+                                <Link2 className="w-3.5 h-3.5 text-slate-900 shrink-0" />
+                                <div className="max-w-xs truncate">
+                                  <span className="font-mono text-[10px] font-bold text-slate-900 mr-1.5">
+                                    {matchingProposal.projectId || `G${matchingProposal.groupNo}`}
+                                  </span>
+                                  <span className="text-slate-600 font-medium truncate">
+                                    {matchingProposal.title}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onSelectProposal(matchingProposal!.id);
+                                    onNavigateToTab('stages');
+                                  }}
+                                  className="text-[10px] text-slate-900 hover:text-black font-bold px-2 py-0.5 rounded-full bg-slate-100 hover:bg-[#D4F938] transition-colors shrink-0 cursor-pointer"
+                                >
+                                  Check
+                                </button>
+                              </div>
+                            ) : user.role === 'coordinator' ? (
+                              <div className="text-[11px] text-slate-500 font-medium">
+                                Arbitrates assigned cohort proposals
+                              </div>
+                            ) : user.role === 'admin' ? (
+                              <div className="text-[11px] text-slate-400 italic">
+                                Department Administrator (Full Access)
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-slate-400 italic">
+                                No proposal linked yet
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Actions: Edit Password & Delete Account */}
+                          <td className="p-4 pr-6 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingUser(user);
+                                  setNewPassword('');
+                                }}
+                                className="text-slate-600 hover:text-slate-950 hover:bg-slate-100 px-2.5 py-1 rounded-full transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+                                title="Edit Password"
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Password</span>
+                              </button>
+
+                              {user.email !== 'admin@dbit.in' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUser(user.id, user.name)}
+                                  className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-full transition-colors cursor-pointer"
+                                  title="Delete Account"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-slate-400 font-medium">
+                        No accounts found matching filter.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Allocations View: Assign Faculty Guides & Coordinators to Projects */
+        <div className="space-y-6">
+          {/* Header & Stats Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                Active Projects
+              </span>
+              <div className="text-2xl font-black text-slate-900">{proposals.length}</div>
+              <span className="text-[11px] text-slate-500 font-medium">Across all cohorts</span>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                Faculty Guides Registered
+              </span>
+              <div className="text-2xl font-black text-slate-900">{guidesList.length}</div>
+              <span className="text-[11px] text-slate-500 font-medium">Available for allocation</span>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                Project Coordinators
+              </span>
+              <div className="text-2xl font-black text-[#18191E]">{coordList.length}</div>
+              <span className="text-[11px] text-slate-500 font-medium">Designated reviewers</span>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                Database Sync Status
+              </span>
+              <div className="text-xs font-black text-emerald-700 flex items-center gap-1.5 mt-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Firestore Live Relational Mode</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Allocations Table */}
+          <div className="bg-white rounded-3xl shadow-xs border border-slate-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <UserCog className="w-5 h-5 text-slate-900" />
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 tracking-tight">
+                    Project Allocation Console (Assign Guides &amp; Coordinators)
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    Select any faculty guide or coordinator from the dropdown to assign immediately.
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono text-slate-400 font-semibold bg-slate-100 px-3 py-1 rounded-full">
+                Auto-saved to Cloud Firestore
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#F4F5F8] text-slate-400 uppercase text-[10px] font-black tracking-wider border-b border-slate-100">
+                  <tr>
+                    <th className="p-4 pl-6">Project Title &amp; ID</th>
+                    <th className="p-4">Student Team</th>
+                    <th className="p-4">Assigned Faculty Guide</th>
+                    <th className="p-4">Assigned Coordinator</th>
+                    <th className="p-4 pr-6 text-right">Quick Navigation</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {proposals.map(proposal => {
+                    const guideChoices = Array.from(new Set([
+                      ...guidesList.map(g => g.name),
+                      proposal.guideName,
+                      'Prof. Nilesh Ghavate',
+                      'Prof. D. Shinde',
+                      'Prof. Aarti Sahitya',
+                      'Dr. Phiroj Shaikh',
+                      'Prof. Prasad Padval',
+                      'Prof. S. More'
+                    ])).filter(Boolean);
+
+                    const coordChoices = Array.from(new Set([
+                      ...coordList.map(c => c.name),
+                      proposal.coordinatorName,
+                      'Prof. Meenal Kulkarni',
+                      'Prof. Nilesh Ghavate',
+                      'Prof. D. Shinde'
+                    ])).filter(Boolean);
+
+                    return (
+                      <tr key={proposal.id} className="hover:bg-slate-50/70 transition-colors">
+                        {/* Project Details */}
+                        <td className="p-4 pl-6">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-[11px] font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
+                              {proposal.projectId || `G${proposal.groupNo}`}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                              Track {proposal.trackNo}
+                            </span>
+                          </div>
+                          <div className="font-extrabold text-slate-900 max-w-xs leading-snug line-clamp-2">
+                            {proposal.title}
+                          </div>
+                          <span className="text-[10px] font-semibold text-slate-400 mt-0.5 inline-block">
+                            {proposal.domain} • {proposal.cohort || proposal.academicYear}
+                          </span>
+                        </td>
+
+                        {/* Student Team */}
+                        <td className="p-4">
+                          <div className="text-slate-800 font-bold mb-1">
+                            Group {proposal.groupNo} ({proposal.teamMembers.length} Members)
+                          </div>
+                          <div className="text-[11px] text-slate-500 space-y-0.5">
+                            {proposal.teamMembers.map((m, idx) => (
+                              <div key={idx} className="truncate max-w-[200px]">
+                                {m.name} {m.rollNo ? `(${m.rollNo})` : ''}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+
+                        {/* Interactive Guide Assignment */}
+                        <td className="p-4">
+                          <div className="space-y-1.5">
+                            <select
+                              value={proposal.guideName}
+                              onChange={(e) => handleAssignAllocation(proposal.id, e.target.value, proposal.coordinatorName)}
+                              className="w-full max-w-[220px] px-3 py-2 bg-[#F4F5F8] border border-slate-200/80 rounded-xl font-bold text-slate-800 text-xs focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                            >
+                              {guideChoices.map(name => (
+                                <option key={name} value={name}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="text-[10px] text-slate-400 font-medium">
+                              Guide has milestone evaluation privileges
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Interactive Coordinator Assignment */}
+                        <td className="p-4">
+                          <div className="space-y-1.5">
+                            <select
+                              value={proposal.coordinatorName || 'Prof. Meenal Kulkarni'}
+                              onChange={(e) => handleAssignAllocation(proposal.id, proposal.guideName, e.target.value)}
+                              className="w-full max-w-[220px] px-3 py-2 bg-[#F4F5F8] border border-slate-200/80 rounded-xl font-bold text-slate-800 text-xs focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                            >
+                              {coordChoices.map(name => (
+                                <option key={name} value={name}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="text-[10px] text-slate-400 font-medium">
+                              Designated project arbiter
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Direct Navigation */}
+                        <td className="p-4 pr-6 text-right">
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
                             <button
                               type="button"
                               onClick={() => {
-                                onSelectProposal(matchingProposal!.id);
+                                onSelectProposal(proposal.id);
                                 onNavigateToTab('stages');
                               }}
-                              className="text-[10px] text-slate-900 hover:text-black font-bold px-2 py-0.5 rounded-full bg-slate-100 hover:bg-[#D4F938] transition-colors shrink-0 cursor-pointer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#18191E] text-white hover:bg-black font-bold text-[11px] shadow-2xs hover:shadow-sm transition-all cursor-pointer"
+                              title="Inspect Visual Stage Gate evaluation"
                             >
-                              Check
+                              <Layers className="w-3.5 h-3.5 text-[#D4F938]" />
+                              <span>Visual Stage Gate</span>
                             </button>
-                          </div>
-                        ) : user.role === 'coordinator' ? (
-                          <div className="text-[11px] text-slate-500 font-medium">
-                            Arbitrates all {proposals.length} cohort proposals
-                          </div>
-                        ) : user.role === 'admin' ? (
-                          <div className="text-[11px] text-slate-400 italic">
-                            Department Administrator (Full Access)
-                          </div>
-                        ) : (
-                          <div className="text-[11px] text-slate-400 italic">
-                            No proposal linked yet
-                          </div>
-                        )}
-                      </td>
 
-                      {/* Actions: Edit Password & Delete Account */}
-                      <td className="p-4 pr-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingUser(user);
-                              setNewPassword('');
-                            }}
-                            className="text-slate-600 hover:text-slate-950 hover:bg-slate-100 px-2.5 py-1 rounded-full transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
-                            title="Edit Password"
-                          >
-                            <KeyRound className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Password</span>
-                          </button>
-
-                          {user.email !== 'admin@dbit.in' && (
                             <button
                               type="button"
-                              onClick={() => handleDeleteUser(user.id, user.name)}
-                              className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-full transition-colors cursor-pointer"
-                              title="Delete Account"
+                              onClick={() => {
+                                onSelectProposal(proposal.id);
+                                onNavigateToTab('gantt');
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F4F5F8] text-slate-800 hover:bg-slate-200 font-bold text-[11px] transition-colors cursor-pointer"
+                              title="View Project Tracking Gantt Timeline"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Tracking</span>
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 font-medium">
-                    No accounts found matching filter.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Quick Assign Modal */}
+      {showAssignModal && selectedPropToAssign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#18191E] rounded-[34px] p-2 border border-black/40 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col text-xs">
+            <div className="bg-[#18191E] text-white px-6 py-4 flex items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-[#D4F938] text-slate-950 flex items-center justify-center font-bold">
+                  <UserCog className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-[#D4F938] uppercase font-bold">
+                    Faculty Assignment
+                  </span>
+                  <h3 className="text-sm font-black text-white mt-0.5">
+                    Assign Faculty &amp; Coordinator: {selectedPropToAssign.projectId}
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAssignModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 bg-[#F4F5F8] rounded-[26px] space-y-4 m-1">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Project</label>
+                <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs font-bold text-slate-900">
+                  {selectedPropToAssign.title}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Assign Faculty Guide
+                </label>
+                <input
+                  type="text"
+                  value={assignedGuideName}
+                  onChange={e => setAssignedGuideName(e.target.value)}
+                  placeholder="e.g. Prof. Nilesh Ghavate"
+                  className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-bold focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Assign Project Coordinator
+                </label>
+                <input
+                  type="text"
+                  value={assignedCoordName}
+                  onChange={e => setAssignedCoordName(e.target.value)}
+                  placeholder="e.g. Prof. Meenal Kulkarni"
+                  className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-bold focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(false)}
+                  className="px-4 py-2 text-slate-500 hover:text-slate-800 font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAssignAllocation(selectedPropToAssign.id, assignedGuideName, assignedCoordName)}
+                  className="bg-[#D4F938] hover:bg-[#cbf525] text-slate-950 font-black px-6 py-2.5 rounded-full shadow-md transition-all cursor-pointer"
+                >
+                  Save Allocation
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Account Modal in Flux Design */}
       {showCreateModal && (
