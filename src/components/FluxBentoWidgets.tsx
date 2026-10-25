@@ -21,13 +21,15 @@ import {
   Upload,
   Calendar,
   MessageSquare,
-  Presentation
+  Presentation,
+  PlusCircle
 } from 'lucide-react';
-import { ProjectProposal, UserRole } from '../types';
+import { ProjectProposal, UserRole, UserAccount } from '../types';
 
 interface FluxBentoWidgetsProps {
   proposals: ProjectProposal[];
   currentRole: UserRole;
+  currentUser?: UserAccount | null;
   onOpenSubmitModal: () => void;
   onNavigateToTab: (tab: string) => void;
 }
@@ -35,6 +37,7 @@ interface FluxBentoWidgetsProps {
 export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
   proposals,
   currentRole,
+  currentUser,
   onOpenSubmitModal,
   onNavigateToTab
 }) => {
@@ -45,27 +48,186 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
     p => p.status === 'flagged_conflict' || p.status === 'coordinator_arbitration'
   ).length;
 
-  // Student's specific project (Group 5 by default, or first proposal)
-  const myProposal = proposals.find(p => p.groupNo === 5) || proposals[0];
+  // Student's specific project based on logged-in student account
+  const myProposal = currentRole === 'student'
+    ? proposals.find(p => 
+        (currentUser?.groupNo && p.groupNo === currentUser.groupNo && (!currentUser.trackNo || p.trackNo === currentUser.trackNo)) ||
+        (p.teamMembers && p.teamMembers.some(m => 
+          (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+          (currentUser?.name && m.name && m.name.toLowerCase() === currentUser.name.toLowerCase()) ||
+          (currentUser?.rollNo && m.rollNo && m.rollNo === currentUser.rollNo)
+        ))
+      )
+    : undefined;
+
   const myNovelty = myProposal?.similarityData 
     ? Math.round((1 - myProposal.similarityData.overallScore) * 100) 
-    : 92;
+    : 0;
   const mySbertScore = myProposal?.similarityData 
     ? Math.round(myProposal.similarityData.sbertScore * 100) 
-    : 18;
+    : 0;
   const myLexicalScore = myProposal?.similarityData 
     ? Math.round(myProposal.similarityData.tfidfScore * 100) 
-    : 12;
+    : 0;
 
   // Student's active stage gate
   const currentGate = myProposal?.stageGates?.find(g => g.status === 'in_progress') || 
                       myProposal?.stageGates?.[2] || 
-                      { title: 'Exp 3: System Architecture & UML Modeling', weekRange: 'Weeks 5-6', dueDate: 'Feb 21, 2026' };
+                      null;
 
-  const verifiedGatesCount = myProposal?.stageGates?.filter(g => g.status === 'approved').length || 4;
+  const verifiedGatesCount = myProposal?.stageGates?.filter(g => g.status === 'approved').length || 0;
   const totalGatesCount = myProposal?.stageGates?.length || 7;
 
-  // If role is Student, render student-tailored widgets (removing administrative noise like conflict arbitration queue & cohort aggregates)
+  // If role is Student and no proposal is submitted yet, show dedicated unsubmitted state
+  if (currentRole === 'student' && !myProposal) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 mb-8">
+        {/* 1. SBERT Screening Sandbox */}
+        <div className="lg:col-span-4 bg-white rounded-[28px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow duration-300">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#18191E] flex items-center justify-center text-[#D4F938]">
+                  <Cpu className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">SBERT Originality Screening</h3>
+                  <span className="text-[10px] font-mono text-slate-500">Awaiting Submission</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-3xl font-black text-slate-300 tracking-tight font-mono">--%</span>
+              <span className="bg-slate-100 text-slate-600 font-extrabold text-[11px] px-2.5 py-0.5 rounded-full">
+                Not Submitted
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium mb-4">
+              Test your project idea in the SBERT sandbox to screen for overlap with 500+ archived theses before submitting.
+            </p>
+
+            <div className="p-4 bg-[#F4F5F8] rounded-2xl border border-slate-200/80 text-center space-y-2">
+              <Sparkles className="w-5 h-5 text-black mx-auto" />
+              <p className="text-xs font-bold text-slate-700">Pre-Submission Originality Sandbox</p>
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('repository')}
+                className="text-xs font-bold text-black bg-[#D4F938] hover:bg-[#c2e72f] px-4 py-1.5 rounded-full transition-colors cursor-pointer"
+              >
+                Test Idea in Sandbox
+              </button>
+            </div>
+          </div>
+          <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            Automated SBERT + TF-IDF matrix
+          </div>
+        </div>
+
+        {/* 2. 14-Week Stage-Gate Status */}
+        <div className="lg:col-span-4 bg-white rounded-[28px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow duration-300">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#18191E] flex items-center justify-center text-[#C6B5FD]">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">14-Week Stage Gates</h3>
+                  <span className="text-[10px] font-mono text-slate-500">Exp 1 to Exp 7</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-3xl font-black text-slate-300 tracking-tight font-mono">0 / 7</span>
+              <span className="bg-[#C6B5FD] text-black font-extrabold text-[11px] px-2.5 py-0.5 rounded-full">
+                Locked
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium mb-4">
+              Experiment milestones and Gantt timeline activate immediately upon proposal registration.
+            </p>
+
+            <div className="p-4 bg-[#F4F5F8] rounded-2xl border border-slate-200/80 space-y-2 text-xs">
+              <div className="flex items-center justify-between font-bold text-slate-700">
+                <span>Phase 1: Design (W1–W6)</span>
+                <span className="text-[10px] text-slate-400">Awaiting Topic</span>
+              </div>
+              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                <div className="w-0 h-full bg-[#D4F938]" />
+              </div>
+              <p className="text-[11px] text-slate-500">Literature review, problem formulation, and UML diagrams.</p>
+            </div>
+          </div>
+          <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            Mumbai University SE Mini Project-I
+          </div>
+        </div>
+
+        {/* 3. GitHub Integration */}
+        <div className="lg:col-span-4 bg-white rounded-[28px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow duration-300">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#18191E] flex items-center justify-center text-white">
+                  <FolderGit2 className="w-4 h-4 text-[#D4F938]" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">GitHub Milestone Sync</h3>
+                  <span className="text-[10px] font-mono text-slate-500">Stage 2 Implementation</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-xl font-black text-slate-400 tracking-tight">Not Connected</span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium mb-4">
+              Link your repository during development to automate commit audits and guide milestone verification.
+            </p>
+
+            <div className="p-4 bg-[#F4F5F8] rounded-2xl border border-slate-200/80 text-center space-y-1.5">
+              <GitBranch className="w-6 h-6 text-slate-400 mx-auto" />
+              <p className="text-xs font-bold text-slate-600">Connect in Stage 2</p>
+              <p className="text-[10px] text-slate-400">Enables automated commit logs for Experiment 5 &amp; 6.</p>
+            </div>
+          </div>
+          <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            Version control tracking
+          </div>
+        </div>
+
+        {/* 4. Action Banner */}
+        <div className="lg:col-span-12 bg-[#18191E] text-white rounded-[32px] p-6 lg:p-8 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-1/4 w-72 h-72 rounded-full bg-[#D4F938]/10 blur-[90px] pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-1.5 max-w-2xl">
+              <span className="text-[10px] font-mono font-bold bg-[#D4F938] text-black px-2.5 py-0.5 rounded-full uppercase">
+                Action Required
+              </span>
+              <h3 className="text-xl font-black text-white tracking-tight">
+                Welcome, {currentUser?.name || 'Student'}! Submit Your Project Proposal
+              </h3>
+              <p className="text-xs text-white/70">
+                You haven&apos;t submitted a capstone proposal yet. Register your team members, project title, and select your Faculty Guide to begin your 14-week engineering schedule.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenSubmitModal}
+              className="inline-flex items-center gap-2 bg-[#D4F938] hover:bg-[#c2e72f] text-black font-black text-xs px-6 py-3.5 rounded-full transition-transform hover:scale-105 shadow-md cursor-pointer shrink-0"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Submit Project Proposal</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If role is Student, render student-tailored widgets with their proposal
   if (currentRole === 'student') {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 mb-8">
@@ -164,11 +326,11 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
 
               <div className="my-3">
                 <h4 className="text-base font-black text-[#18191E] leading-snug">
-                  {currentGate.title}
+                  {currentGate?.title || 'Exp 1: Topic Approval & Screening'}
                 </h4>
                 <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Target Due: <strong className="text-black font-mono">{currentGate.dueDate}</strong></span>
+                  <span>Target Due: <strong className="text-black font-mono">{currentGate?.dueDate || 'Week 2'}</strong></span>
                 </div>
               </div>
             </div>

@@ -22,53 +22,112 @@ import {
 import { ProjectProposal, HistoricalProject, StudentMember, UserAccount } from '../types';
 import { scanProposalSimilarity } from '../utils/nlpSimilarity';
 import { analyzeProposalWithAi } from '../utils/geminiAi';
+import { subscribeToUsers } from '../utils/firestoreSync';
 
 interface ProposalSubmissionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (proposal: Partial<ProjectProposal>) => void;
   historicalProjects: HistoricalProject[];
+  currentUser?: UserAccount | null;
 }
 
 export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  historicalProjects
+  historicalProjects,
+  currentUser
 }) => {
   const [title, setTitle] = useState('');
   const [domain, setDomain] = useState<ProjectProposal['domain']>('AI/ML');
-  const [trackNo, setTrackNo] = useState<number>(7);
-  const [groupNo, setGroupNo] = useState<number>(5);
-  const [cohort, setCohort] = useState('SE COMPS C (Batch A)');
+  const [trackNo, setTrackNo] = useState<number>(currentUser?.trackNo ?? 7);
+  const [groupNo, setGroupNo] = useState<number>(currentUser?.groupNo ?? 1);
+  const [cohort, setCohort] = useState(currentUser?.cohort || 'SE COMPS C (Batch A)');
   const [abstract, setAbstract] = useState('');
   const [problemStatement, setProblemStatement] = useState('');
-  const [techStackInput, setTechStackInput] = useState('Sentence-BERT, TF-IDF, React, TypeScript');
-  const [githubUrl, setGithubUrl] = useState('https://github.com/rishiks1207/dbit-project-track');
-  const [guideName, setGuideName] = useState('Mr. Nazareth Remedios');
+  const [techStackInput, setTechStackInput] = useState('TypeScript, React, Python');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [guideName, setGuideName] = useState(currentUser?.role === 'guide' ? currentUser.name : 'Mr. Nazareth Remedios');
   
   // Database students
   const [availableStudents, setAvailableStudents] = useState<UserAccount[]>([]);
   const [showStudentPicker, setShowStudentPicker] = useState(false);
 
   // Team members
-  const [teamMembers, setTeamMembers] = useState<StudentMember[]>([
-    { name: 'Rishik Ezhuthachan', rollNo: '15', email: 'student@dbit.in', isLeader: true },
-    { name: 'Apoorvadeep Sinha', rollNo: '16', email: 'apoorvadeep.sinha@dbit.in' },
-    { name: 'Ron Barretto', rollNo: '17', email: 'ron.barretto@dbit.in' },
-    { name: 'Aryan Gaikwad', rollNo: '18', email: 'aryan.gaikwad@dbit.in' }
-  ]);
+  const [teamMembers, setTeamMembers] = useState<StudentMember[]>(() => {
+    if (currentUser?.role === 'student' && currentUser.name) {
+      return [{
+        name: currentUser.name,
+        rollNo: currentUser.rollNo || '1',
+        email: currentUser.email || 'student@dbit.in',
+        isLeader: true
+      }];
+    }
+    return [
+      { name: 'Rishik Ezhuthachan', rollNo: '15', email: 'student@dbit.in', isLeader: true },
+      { name: 'Apoorvadeep Sinha', rollNo: '16', email: 'apoorvadeep.sinha@dbit.in' },
+      { name: 'Ron Barretto', rollNo: '17', email: 'ron.barretto@dbit.in' },
+      { name: 'Aryan Gaikwad', rollNo: '18', email: 'aryan.gaikwad@dbit.in' }
+    ];
+  });
+
+  // Re-sync with currentUser when modal opens
+  useEffect(() => {
+    if (isOpen && currentUser) {
+      if (currentUser.groupNo) setGroupNo(currentUser.groupNo);
+      if (currentUser.trackNo) setTrackNo(currentUser.trackNo);
+      if (currentUser.cohort) setCohort(currentUser.cohort);
+      if (currentUser.role === 'guide') setGuideName(currentUser.name);
+
+      if (currentUser.role === 'student' && currentUser.name) {
+        // If not Rishik or group 5, start with user's own profile as team leader
+        const isDefaultRishik = currentUser.email === 'student@dbit.in' || currentUser.name.toLowerCase().includes('rishik');
+        if (!isDefaultRishik) {
+          setTeamMembers([{
+            name: currentUser.name,
+            rollNo: currentUser.rollNo || '1',
+            email: currentUser.email || 'student@dbit.in',
+            isLeader: true
+          }]);
+        }
+      }
+    }
+  }, [isOpen, currentUser]);
 
   useEffect(() => {
+    // 1. Subscribe to live Firestore users
+    const unsub = subscribeToUsers((allUsers) => {
+      const studs = allUsers.filter(u => u.role === 'student');
+      if (studs.length > 0) {
+        setAvailableStudents(studs);
+      }
+    });
+
+    // 2. Also try API endpoint if on Express
     fetch('/api/users')
-      .then(res => res.json())
+      .then(res => {
+        const ct = res.headers.get('content-type') || '';
+        if (res.ok && ct.includes('application/json')) return res.json();
+        return [];
+      })
       .then(data => {
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           const studs = data.filter((u: UserAccount) => u.role === 'student');
-          setAvailableStudents(studs);
+          setAvailableStudents(prev => {
+            const combined = [...prev];
+            studs.forEach(s => {
+              if (!combined.some(c => c.email.toLowerCase() === s.email.toLowerCase())) {
+                combined.push(s);
+              }
+            });
+            return combined;
+          });
         }
       })
       .catch(err => console.warn('Could not load registered students:', err));
+
+    return () => unsub();
   }, []);
 
   // Pitch defense

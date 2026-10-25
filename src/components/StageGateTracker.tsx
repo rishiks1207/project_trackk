@@ -31,17 +31,27 @@ export const StageGateTracker: React.FC<StageGateTrackerProps> = ({
   onUpdateMilestone,
   onUpdateGitHubData
 }) => {
+  const gates = proposal?.stageGates || [];
   const [selectedMilestone, setSelectedMilestone] = useState<StageGateMilestone | null>(
-    proposal.stageGates.find(m => m.status === 'in_progress' || m.status === 'submitted') || proposal.stageGates[0] || null
+    gates.find(m => m.status === 'in_progress' || m.status === 'submitted') || gates[0] || null
   );
 
   const [deliverableUrl, setDeliverableUrl] = useState('');
   const [submissionNotes, setSubmissionNotes] = useState('');
 
   // Stats
-  const approvedCount = proposal.stageGates.filter(m => m.status === 'approved').length;
-  const totalCount = proposal.stageGates.length;
+  const approvedCount = gates.filter(m => m.status === 'approved').length;
+  const totalCount = gates.length;
   const progressPercent = totalCount > 0 ? Math.round((approvedCount / totalCount) * 100) : 0;
+
+  if (!proposal || gates.length === 0) {
+    return (
+      <div className="bg-white rounded-[28px] p-8 text-center border border-slate-200/80 shadow-xs max-w-lg mx-auto my-12 space-y-3">
+        <p className="text-base font-black text-slate-800">No Stage Gate Milestones Available</p>
+        <p className="text-xs text-slate-500">Please select or submit an active proposal with registered stage gates.</p>
+      </div>
+    );
+  }
 
   const handleLinkCommitToMilestone = (commitSha: string, commitMsg: string) => {
     if (!selectedMilestone) return;
