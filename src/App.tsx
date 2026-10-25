@@ -135,13 +135,13 @@ export default function App() {
           fetch('/api/proposals'),
           fetch('/api/historical-projects')
         ]);
-        if (propsRes.ok) {
+        if (propsRes.ok && propsRes.headers.get('content-type')?.includes('application/json')) {
           const propsData = await propsRes.json();
           if (Array.isArray(propsData) && propsData.length > 0) {
             setProposals(propsData);
           }
         }
-        if (histRes.ok) {
+        if (histRes.ok && histRes.headers.get('content-type')?.includes('application/json')) {
           const histData = await histRes.json();
           if (Array.isArray(histData) && histData.length > 0) {
             setHistoricalProjects(histData);
