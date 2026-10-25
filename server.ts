@@ -9,7 +9,14 @@ import {
   insertProposal,
   updateProposalStatus,
   updateStageGate,
-  insertFeedback
+  insertFeedback,
+  getAllUsers,
+  createUserAccount,
+  deleteUserAccount,
+  updateUserPassword,
+  createGuideMessage,
+  getGuideMessages,
+  authenticateUser
 } from './src/db/queries.ts';
 
 dotenv.config();
@@ -19,7 +26,127 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// 1. Get all proposals with stage-gates and feedback
+// ---------------- AUTH & USER ACCOUNT APIS ----------------
+
+// 1. User Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+    const user = await authenticateUser(email, password);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials. Please verify email and password.' });
+    }
+    res.json(user);
+  } catch (error: any) {
+    console.error('Error during login:', error);
+    res.status(500).json({ error: error.message || 'Login failed.' });
+  }
+});
+
+// 2. Get All Users (for Admin Panel & Project linkage)
+app.get('/api/users', async (_req, res) => {
+  try {
+    const userList = await getAllUsers();
+    res.json(userList);
+  } catch (error: any) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch users' });
+  }
+});
+
+// 3. Admin: Create New Account
+app.post('/api/users', async (req, res) => {
+  try {
+    const { name, email, role, password, rollNo, department, cohort, groupNo, trackNo } = req.body;
+    if (!name || !email || !role) {
+      return res.status(400).json({ error: 'Name, email, and role are required.' });
+    }
+    const newUser = await createUserAccount({
+      name,
+      email,
+      role,
+      password,
+      rollNo,
+      department,
+      cohort,
+      groupNo,
+      trackNo
+    });
+    res.status(201).json(newUser);
+  } catch (error: any) {
+    console.error('Error creating user account:', error);
+    res.status(500).json({ error: error.message || 'Failed to create user account' });
+  }
+});
+
+// 4. Admin / Self: Update User Password
+app.put('/api/users/:id/password', async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.trim().length < 4) {
+      return res.status(400).json({ error: 'Password must be at least 4 characters.' });
+    }
+    const updated = await updateUserPassword(parseInt(req.params.id), password);
+    if (!updated) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    res.json({ message: 'Password updated successfully.', user: updated });
+  } catch (error: any) {
+    console.error('Error updating password:', error);
+    res.status(500).json({ error: error.message || 'Failed to update password' });
+  }
+});
+
+// 5. Admin: Delete User Account
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    const deleted = await deleteUserAccount(parseInt(req.params.id));
+    res.json(deleted);
+  } catch (error: any) {
+    console.error('Error deleting user account:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete user account' });
+  }
+});
+
+// 6. Guide Messages (Direct notices to student groups)
+app.get('/api/messages', async (req, res) => {
+  try {
+    const groupNo = req.query.groupNo ? Number(req.query.groupNo) : undefined;
+    const messages = await getGuideMessages(groupNo);
+    res.json(messages);
+  } catch (error: any) {
+    console.error('Error fetching guide messages:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch guide messages' });
+  }
+});
+
+app.post('/api/messages', async (req, res) => {
+  try {
+    const { senderName, senderRole, targetGroupNo, subject, message, urgency } = req.body;
+    if (!senderName || !targetGroupNo || !subject || !message) {
+      return res.status(400).json({ error: 'Sender, target group, subject, and message are required.' });
+    }
+    const newMsg = await createGuideMessage({
+      senderName,
+      senderRole,
+      targetGroupNo,
+      subject,
+      message,
+      urgency
+    });
+    res.status(201).json(newMsg);
+  } catch (error: any) {
+    console.error('Error creating guide message:', error);
+    res.status(500).json({ error: error.message || 'Failed to create guide message' });
+  }
+});
+
+// ---------------- PROPOSAL & STAGE-GATE APIS ----------------
+
+// 5. Get all proposals with stage-gates and feedback
 app.get('/api/proposals', async (_req, res) => {
   try {
     const data = await getAllProposals();
@@ -30,7 +157,7 @@ app.get('/api/proposals', async (_req, res) => {
   }
 });
 
-// 2. Get historical projects
+// 6. Get historical projects
 app.get('/api/historical-projects', async (_req, res) => {
   try {
     const data = await getAllHistoricalProjects();
@@ -41,7 +168,7 @@ app.get('/api/historical-projects', async (_req, res) => {
   }
 });
 
-// 3. Create new proposal
+// 7. Create new proposal
 app.post('/api/proposals', async (req, res) => {
   try {
     const newProposal = await insertProposal(req.body);
@@ -52,7 +179,7 @@ app.post('/api/proposals', async (req, res) => {
   }
 });
 
-// 4. Update proposal status (arbitration, guide approval)
+// 8. Update proposal status (arbitration, guide approval)
 app.put('/api/proposals/:id/status', async (req, res) => {
   try {
     const { status, lockedTopic } = req.body;
@@ -64,7 +191,7 @@ app.put('/api/proposals/:id/status', async (req, res) => {
   }
 });
 
-// 5. Update stage gate
+// 9. Update stage gate
 app.put('/api/stage-gates/:id', async (req, res) => {
   try {
     const updated = await updateStageGate(req.params.id, req.body);
@@ -75,7 +202,7 @@ app.put('/api/stage-gates/:id', async (req, res) => {
   }
 });
 
-// 6. Log feedback
+// 10. Log feedback
 app.post('/api/feedback', async (req, res) => {
   try {
     const feedback = await insertFeedback(req.body);

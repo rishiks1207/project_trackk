@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { 
   X, 
   Sparkles, 
@@ -13,9 +13,13 @@ import {
   Trash2,
   FileCheck,
   RotateCcw,
-  Scale
+  Scale,
+  Users,
+  Check,
+  UserCheck,
+  ArrowRight
 } from 'lucide-react';
-import { ProjectProposal, HistoricalProject, StudentMember } from '../types';
+import { ProjectProposal, HistoricalProject, StudentMember, UserAccount } from '../types';
 import { scanProposalSimilarity } from '../utils/nlpSimilarity';
 import { analyzeProposalWithAi } from '../utils/geminiAi';
 
@@ -43,13 +47,29 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
   const [githubUrl, setGithubUrl] = useState('https://github.com/rishiks1207/dbit-project-track');
   const [guideName, setGuideName] = useState('Mr. Nazareth Remedios');
   
+  // Database students
+  const [availableStudents, setAvailableStudents] = useState<UserAccount[]>([]);
+  const [showStudentPicker, setShowStudentPicker] = useState(false);
+
   // Team members
   const [teamMembers, setTeamMembers] = useState<StudentMember[]>([
-    { name: 'Apoorvadeep Sinha', rollNo: '01', email: 'apoorvadeep.sinha@dbit.in', isLeader: true },
-    { name: 'Ron Barretto', rollNo: '05', email: 'ron.barretto@dbit.in' },
-    { name: 'Rishik Ezhuthachan', rollNo: '15', email: 'rishiks1207@gmail.com' },
-    { name: 'Aryan Gaikwad', rollNo: '17', email: 'aryan.gaikwad@dbit.in' }
+    { name: 'Rishik Ezhuthachan', rollNo: '15', email: 'student@dbit.in', isLeader: true },
+    { name: 'Apoorvadeep Sinha', rollNo: '16', email: 'apoorvadeep.sinha@dbit.in' },
+    { name: 'Ron Barretto', rollNo: '17', email: 'ron.barretto@dbit.in' },
+    { name: 'Aryan Gaikwad', rollNo: '18', email: 'aryan.gaikwad@dbit.in' }
   ]);
+
+  useEffect(() => {
+    fetch('/api/users')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const studs = data.filter((u: UserAccount) => u.role === 'student');
+          setAvailableStudents(studs);
+        }
+      })
+      .catch(err => console.warn('Could not load registered students:', err));
+  }, []);
 
   // Pitch defense
   const [pitchDefense, setPitchDefense] = useState('');
@@ -146,361 +166,477 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-zinc-200 w-full max-w-4xl my-8 overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Modal Header */}
-        <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white px-6 py-4 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="bg-blue-800 text-blue-200 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                UC-02: Submit Proposal
-              </span>
-              <span className="bg-indigo-700 text-indigo-200 text-[10px] font-bold px-2 py-0.5 rounded">
-                UC-03: Run Semantic Similarity Screening
-              </span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-[#18191E] rounded-[34px] sm:rounded-[40px] p-2 sm:p-2.5 shadow-2xl border border-black/40 w-full max-w-4xl my-6 flex flex-col max-h-[92vh] overflow-hidden">
+        
+        {/* Dark Header with Neon-Lime Spark Logo */}
+        <div className="bg-[#18191E] text-white px-6 py-4 flex items-center justify-between border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#D4F938] to-[#C6B5FD] flex items-center justify-center p-2 shadow-md shadow-[#D4F938]/20">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 text-slate-950 fill-current">
+                <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" />
+              </svg>
             </div>
-            <h2 className="text-lg font-bold text-white mt-1">
-              Submit Engineering Project Proposal
-            </h2>
-            <p className="text-xs text-blue-200">
-              Real-time SBERT contextual embedding + TF-IDF cosine duplicate screening
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="bg-[#D4F938] text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  SBERT Active
+                </span>
+                <span className="text-slate-400 text-[11px] font-mono">
+                  Cutoff: 0.75
+                </span>
+              </div>
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
+                Submit Engineering Project Proposal
+              </h2>
+            </div>
           </div>
 
           <button
             onClick={onClose}
-            className="text-blue-300 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
-            aria-label="Close submission modal"
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Quick Test Presets Bar */}
-        <div className="bg-zinc-50 border-b border-zinc-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span className="text-zinc-600 font-medium flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>Load Quick Test Preset:</span>
+        {/* Quick Test Presets Bar in Charcoal Theme */}
+        <div className="bg-[#18191E] px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs border-b border-white/10">
+          <span className="text-slate-400 font-semibold flex items-center gap-1.5 text-[11px]">
+            <Sparkles className="w-3.5 h-3.5 text-[#D4F938]" />
+            <span>Load Test Preset:</span>
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => loadPreset('group5')}
-              className="px-2.5 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-800 font-medium transition-colors"
+              className="px-3 py-1 rounded-full bg-white/10 hover:bg-white text-slate-200 hover:text-slate-950 text-[11px] font-bold transition-all cursor-pointer"
             >
               Group 5 (DBIT ProjectTrack)
             </button>
             <button
               type="button"
               onClick={() => loadPreset('duplicate')}
-              className="px-2.5 py-1 rounded bg-red-100 hover:bg-red-200 text-red-800 font-medium transition-colors"
+              className="px-3 py-1 rounded-full bg-red-500/20 hover:bg-red-500 text-red-200 hover:text-white text-[11px] font-bold transition-all cursor-pointer"
             >
-              Simulate Duplicate (&ge; 0.75 Clash)
+              Simulate Duplicate (≥ 0.75)
             </button>
             <button
               type="button"
               onClick={() => loadPreset('novel')}
-              className="px-2.5 py-1 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-medium transition-colors"
+              className="px-3 py-1 rounded-full bg-[#D4F938]/20 hover:bg-[#D4F938] text-[#D4F938] hover:text-slate-950 text-[11px] font-bold transition-all cursor-pointer"
             >
               Simulate 100% Novel
             </button>
           </div>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
-          {/* Real-time NLP Gauge Card */}
-          <div className={`p-4 rounded-xl border transition-all ${
-            similarityReport.isConflict 
-              ? 'bg-red-50/80 border-red-300 text-red-900' 
-              : similarityReport.overallScore >= 0.4 
-                ? 'bg-amber-50/80 border-amber-300 text-amber-900'
-                : 'bg-emerald-50/80 border-emerald-300 text-emerald-900'
-          }`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg text-white shadow-xs ${
-                  similarityReport.isConflict ? 'bg-red-600' : similarityReport.overallScore >= 0.4 ? 'bg-amber-500' : 'bg-emerald-600'
+        {/* Main Porcelain Content Body */}
+        <div className="flex-1 bg-[#F4F5F8] rounded-[24px] sm:rounded-[30px] p-5 sm:p-7 overflow-y-auto space-y-5 m-1">
+          
+          {/* Real-Time Similarity Score Card in White Bento Design */}
+          <div className="bg-white rounded-3xl p-5 shadow-xs border border-slate-100/90 transition-all">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {/* Circular Originality Score Bubble */}
+                <div className={`w-14 h-14 rounded-full flex flex-col items-center justify-center font-black text-sm shadow-sm ${
+                  similarityReport.isConflict 
+                    ? 'bg-red-500 text-white' 
+                    : similarityReport.overallScore >= 0.4 
+                      ? 'bg-[#C6B5FD] text-slate-900' 
+                      : 'bg-[#D4F938] text-slate-950'
                 }`}>
-                  {originalityPercent}%
+                  <span className="text-base font-mono leading-none">{originalityPercent}%</span>
+                  <span className="text-[8px] uppercase tracking-wider font-extrabold mt-0.5">Novel</span>
                 </div>
+
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm">
+                    <span className="font-extrabold text-sm text-slate-900">
                       Originality Score: {originalityPercent}%
                     </span>
-                    <span className="text-xs px-2 py-0.5 rounded font-mono font-medium border bg-white/70">
-                      Similarity: {simPercent}%
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-mono font-bold bg-slate-100 text-slate-700">
+                      Overlap: {simPercent}%
                     </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-800 text-white font-mono">
-                      Threshold: 75%
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#18191E] text-white font-mono font-semibold">
+                      Cutoff: 75%
                     </span>
                   </div>
-                  <p className="text-xs mt-0.5 opacity-90">
+                  <p className="text-xs text-slate-500 mt-1 font-medium">
                     {similarityReport.explanation}
                   </p>
                 </div>
               </div>
 
-              {/* SBERT vs TF-IDF Sub-scores */}
-              <div className="flex items-center gap-3 bg-white/80 px-3 py-1.5 rounded-lg border border-black/5 text-xs font-mono">
+              {/* Sub-scores: SBERT (Lilac) vs TF-IDF (Obsidian) */}
+              <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-200/60 text-xs font-mono">
                 <div>
-                  <span className="text-zinc-500 block text-[10px]">SBERT (Semantic)</span>
-                  <span className="font-bold text-zinc-900">{(similarityReport.sbertScore * 100).toFixed(1)}%</span>
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">SBERT (Dense)</span>
+                  <span className="font-black text-slate-900">{(similarityReport.sbertScore * 100).toFixed(1)}%</span>
                 </div>
-                <div className="h-6 w-px bg-zinc-300" />
+                <div className="h-6 w-px bg-slate-200" />
                 <div>
-                  <span className="text-zinc-500 block text-[10px]">TF-IDF (Lexical)</span>
-                  <span className="font-bold text-zinc-900">{(similarityReport.tfidfScore * 100).toFixed(1)}%</span>
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">TF-IDF (Lexical)</span>
+                  <span className="font-black text-slate-900">{(similarityReport.tfidfScore * 100).toFixed(1)}%</span>
                 </div>
               </div>
             </div>
 
-            {/* Matched project alert if conflict */}
+            {/* Conflict Alert Banner */}
             {similarityReport.isConflict && similarityReport.matchedProjectTitle && (
-              <div className="mt-3 pt-3 border-t border-red-200/80 text-xs">
-                <div className="flex items-center gap-1.5 font-semibold text-red-800">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  <span>Clashing Topic Flagged (UML: [Sim &ge; 0.75] &rarr; FlaggedConflict):</span>
+              <div className="mt-4 pt-3.5 border-t border-slate-100 text-xs">
+                <div className="flex items-center gap-2 font-bold text-red-600">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Clashing Proposal Flagged (Overlap &ge; 0.75):</span>
                 </div>
-                <p className="mt-1 text-red-950 font-medium pl-5">
+                <p className="mt-1 text-slate-900 font-bold pl-6">
                   &ldquo;{similarityReport.matchedProjectTitle}&rdquo; ({similarityReport.matchedProjectYear})
                 </p>
-                <p className="mt-1 pl-5 text-red-700 text-[11px]">
-                  Requires submission of a 200-Word Pitch Defense. The Project Coordinator and Guide will evaluate both proposals side-by-side in the Arbitration Queue.
+                <p className="mt-0.5 pl-6 text-slate-500 text-[11px]">
+                  Requires submission of a 200-Word Pitch Defense. Coordinator &amp; Guide will evaluate both proposals side-by-side.
                 </p>
               </div>
             )}
           </div>
 
-          {/* Basic Proposal Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="md:col-span-2">
-              <label htmlFor={titleInputId} className="block font-semibold text-zinc-800 mb-1">
-                Project Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                id={titleInputId}
-                type="text"
-                required
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="e.g. Centralized Project Proposal & Progress Tracking Portal"
-                className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label htmlFor={domainSelectId} className="block font-semibold text-zinc-800 mb-1">
-                Domain Track <span className="text-red-500">*</span>
-              </label>
-              <select
-                id={domainSelectId}
-                value={domain}
-                onChange={e => setDomain(e.target.value as any)}
-                className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-white"
-              >
-                <option value="AI/ML">AI / Machine Learning (Track 7)</option>
-                <option value="Web3 & Blockchain">Web3 & Blockchain (Track 4)</option>
-                <option value="IoT & Embedded">IoT & Embedded Systems (Track 1)</option>
-                <option value="Cloud & Distributed">Cloud & Distributed (Track 2)</option>
-                <option value="CyberSecurity">CyberSecurity (Track 5)</option>
-                <option value="HealthTech">HealthTech (Track 3)</option>
-                <option value="EdTech">EdTech & Campus Automation (Track 6)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Track, Group, Cohort, Guide */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            <div>
-              <label htmlFor={trackInputId} className="block font-semibold text-zinc-700 mb-1">Track No.</label>
-              <input
-                id={trackInputId}
-                type="number"
-                value={trackNo}
-                onChange={e => setTrackNo(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-1.5 border border-zinc-300 rounded-lg"
-              />
-            </div>
-            <div>
-              <label htmlFor={groupInputId} className="block font-semibold text-zinc-700 mb-1">Group No.</label>
-              <input
-                id={groupInputId}
-                type="number"
-                value={groupNo}
-                onChange={e => setGroupNo(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-1.5 border border-zinc-300 rounded-lg"
-              />
-            </div>
-            <div>
-              <label htmlFor={cohortInputId} className="block font-semibold text-zinc-700 mb-1">Cohort Class</label>
-              <input
-                id={cohortInputId}
-                type="text"
-                value={cohort}
-                onChange={e => setCohort(e.target.value)}
-                className="w-full px-3 py-1.5 border border-zinc-300 rounded-lg"
-              />
-            </div>
-            <div>
-              <label htmlFor={guideSelectId} className="block font-semibold text-zinc-700 mb-1">Internal Faculty Guide</label>
-              <select
-                id={guideSelectId}
-                value={guideName}
-                onChange={e => setGuideName(e.target.value)}
-                className="w-full px-3 py-1.5 border border-zinc-300 rounded-lg bg-white"
-              >
-                <option value="Mr. Nazareth Remedios">Mr. Nazareth Remedios</option>
-                <option value="Ms. Harleen Kaur Plaha">Ms. Harleen Kaur Plaha</option>
-                <option value="Prof. Meenal Kulkarni">Prof. Meenal Kulkarni</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Abstract */}
-          <div>
-            <div className="flex items-center justify-between mb-1 text-xs">
-              <label htmlFor={abstractTextareaId} className="font-semibold text-zinc-800">
-                Proposal Abstract <span className="text-red-500">*</span>
-              </label>
-              <span className="text-zinc-500">
-                SBERT contextual vectors computed in real-time
-              </span>
-            </div>
-            <textarea
-              id={abstractTextareaId}
-              required
-              rows={4}
-              value={abstract}
-              onChange={e => setAbstract(e.target.value)}
-              placeholder="Detailed project summary outlining technical methodology, algorithms, and expected deliverables..."
-              className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-            />
-          </div>
-
-          {/* Problem Statement & Tech Stack */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label htmlFor={problemStatementId} className="block font-semibold text-zinc-700 mb-1">
-                Problem Statement
-              </label>
-              <textarea
-                id={problemStatementId}
-                rows={2}
-                value={problemStatement}
-                onChange={e => setProblemStatement(e.target.value)}
-                placeholder="What academic or engineering pain point does this address?"
-                className="w-full px-3 py-2 border border-zinc-300 rounded-lg"
-              />
-            </div>
-            <div>
-              <label htmlFor={techStackInputId} className="block font-semibold text-zinc-700 mb-1">
-                Proposed Tech Stack (comma separated)
-              </label>
-              <input
-                id={techStackInputId}
-                type="text"
-                value={techStackInput}
-                onChange={e => setTechStackInput(e.target.value)}
-                className="w-full px-3 py-2 border border-zinc-300 rounded-lg"
-              />
-              <div className="mt-2">
-                <label htmlFor={githubInputId} className="block font-semibold text-zinc-700 mb-0.5">
-                  GitHub Repository (for Stage 2 Sync)
+          {/* Form Controls */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            
+            {/* Project Title & Domain Track */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="md:col-span-2">
+                <label htmlFor={titleInputId} className="block font-bold text-slate-800 mb-1.5">
+                  Project Title <span className="text-red-500">*</span>
                 </label>
                 <input
-                  id={githubInputId}
+                  id={titleInputId}
                   type="text"
-                  value={githubUrl}
-                  onChange={e => setGithubUrl(e.target.value)}
-                  placeholder="https://github.com/username/repo or owner/repo"
-                  className="w-full px-3 py-1.5 border border-zinc-300 rounded-lg font-mono text-[11px]"
+                  required
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="e.g. Centralized Project Proposal & Progress Tracking Portal"
+                  className="w-full bg-white rounded-2xl px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 border border-slate-200/80 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-[#D4F938] font-medium"
                 />
               </div>
-            </div>
-          </div>
 
-          {/* Mandatory Pitch Defense section if Similarity >= 0.75 */}
-          {(similarityReport.isConflict || pitchDefense.length > 0) && (
-            <div className="p-4 rounded-xl border border-red-200 bg-red-50/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-red-900 flex items-center gap-1.5">
-                    <Scale className="w-4 h-4 text-red-600" />
-                    <span>Expert-in-the-Loop: 200-Word Pitch Defense</span>
-                  </h4>
-                  <p className="text-[11px] text-red-700">
-                    Defend why your team should be awarded this topic over overlapping proposals.
-                  </p>
+              <div>
+                <label htmlFor={domainSelectId} className="block font-bold text-slate-800 mb-1.5">
+                  Domain Track <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id={domainSelectId}
+                  value={domain}
+                  onChange={e => setDomain(e.target.value as any)}
+                  className="w-full bg-white rounded-2xl px-4 py-2.5 text-xs text-slate-900 border border-slate-200/80 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-[#D4F938] font-medium"
+                >
+                  <option value="AI/ML">AI / Machine Learning (Track 7)</option>
+                  <option value="Web3 & Blockchain">Web3 & Blockchain (Track 4)</option>
+                  <option value="IoT & Embedded">IoT & Embedded Systems (Track 1)</option>
+                  <option value="Cloud & Distributed">Cloud & Distributed (Track 2)</option>
+                  <option value="CyberSecurity">CyberSecurity (Track 5)</option>
+                  <option value="HealthTech">HealthTech (Track 3)</option>
+                  <option value="EdTech">EdTech & Campus Automation (Track 6)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Track, Group, Cohort, Guide */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div>
+                <label htmlFor={trackInputId} className="block font-bold text-slate-700 mb-1">Track No.</label>
+                <input
+                  id={trackInputId}
+                  type="number"
+                  value={trackNo}
+                  onChange={e => setTrackNo(parseInt(e.target.value) || 1)}
+                  className="w-full bg-white rounded-2xl px-3 py-2 border border-slate-200/80 shadow-xs text-xs font-mono font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label htmlFor={groupInputId} className="block font-bold text-slate-700 mb-1">Group No.</label>
+                <input
+                  id={groupInputId}
+                  type="number"
+                  value={groupNo}
+                  onChange={e => setGroupNo(parseInt(e.target.value) || 1)}
+                  className="w-full bg-white rounded-2xl px-3 py-2 border border-slate-200/80 shadow-xs text-xs font-mono font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label htmlFor={cohortInputId} className="block font-bold text-slate-700 mb-1">Cohort Class</label>
+                <input
+                  id={cohortInputId}
+                  type="text"
+                  value={cohort}
+                  onChange={e => setCohort(e.target.value)}
+                  className="w-full bg-white rounded-2xl px-3 py-2 border border-slate-200/80 shadow-xs text-xs font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label htmlFor={guideSelectId} className="block font-bold text-slate-700 mb-1">Faculty Guide</label>
+                <select
+                  id={guideSelectId}
+                  value={guideName}
+                  onChange={e => setGuideName(e.target.value)}
+                  className="w-full bg-white rounded-2xl px-3 py-2 border border-slate-200/80 shadow-xs text-xs font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                >
+                  <option value="Mr. Nazareth Remedios">Mr. Nazareth Remedios</option>
+                  <option value="Ms. Harleen Kaur Plaha">Ms. Harleen Kaur Plaha</option>
+                  <option value="Prof. Meenal Kulkarni">Prof. Meenal Kulkarni</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Proposal Abstract */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5 text-xs">
+                <label htmlFor={abstractTextareaId} className="font-bold text-slate-800">
+                  Proposal Abstract <span className="text-red-500">*</span>
+                </label>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  Vectors computed against 500+ theses
+                </span>
+              </div>
+              <textarea
+                id={abstractTextareaId}
+                required
+                rows={4}
+                value={abstract}
+                onChange={e => setAbstract(e.target.value)}
+                placeholder="Detailed project summary outlining technical methodology, algorithms, and expected deliverables..."
+                className="w-full bg-white rounded-3xl p-4 text-xs text-slate-900 border border-slate-200/80 shadow-xs focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden font-medium leading-relaxed"
+              />
+            </div>
+
+            {/* Problem Statement & Tech Stack */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label htmlFor={problemStatementId} className="block font-bold text-slate-700 mb-1.5">
+                  Problem Statement
+                </label>
+                <textarea
+                  id={problemStatementId}
+                  rows={2}
+                  value={problemStatement}
+                  onChange={e => setProblemStatement(e.target.value)}
+                  placeholder="What academic or engineering pain point does this address?"
+                  className="w-full bg-white rounded-2xl p-3 border border-slate-200/80 shadow-xs text-xs font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label htmlFor={techStackInputId} className="block font-bold text-slate-700 mb-1.5">
+                  Tech Stack (comma separated)
+                </label>
+                <input
+                  id={techStackInputId}
+                  type="text"
+                  value={techStackInput}
+                  onChange={e => setTechStackInput(e.target.value)}
+                  className="w-full bg-white rounded-2xl px-3 py-2 border border-slate-200/80 shadow-xs text-xs font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                />
+                
+                <div className="mt-2.5">
+                  <label htmlFor={githubInputId} className="block font-bold text-slate-700 mb-1">
+                    GitHub Repository (Stage 2 Sync)
+                  </label>
+                  <input
+                    id={githubInputId}
+                    type="text"
+                    value={githubUrl}
+                    onChange={e => setGithubUrl(e.target.value)}
+                    placeholder="https://github.com/username/repo"
+                    className="w-full bg-white rounded-2xl px-3 py-2 border border-slate-200/80 shadow-xs text-xs font-mono font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                  />
                 </div>
+              </div>
+            </div>
+
+            {/* Pitch Defense section (if conflict flagged or voluntary) */}
+            {(similarityReport.isConflict || pitchDefense.length > 0) && (
+              <div className="bg-white rounded-3xl p-5 border border-red-200 shadow-xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-red-950 flex items-center gap-1.5">
+                      <Scale className="w-4 h-4 text-red-600" />
+                      <span>200-Word Pitch Defense</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Defend why your team should be awarded this topic over overlapping proposals.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isAiAnalyzing}
+                    onClick={handleGenerateAiDefense}
+                    className="inline-flex items-center gap-1 bg-[#18191E] hover:bg-black text-[#D4F938] text-[11px] font-bold px-3 py-1.5 rounded-full shadow-xs transition-all cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{isAiAnalyzing ? 'Drafting...' : 'AI Assist Pitch'}</span>
+                  </button>
+                </div>
+
+                <textarea
+                  id={pitchDefenseId}
+                  rows={3}
+                  value={pitchDefense}
+                  onChange={e => setPitchDefense(e.target.value)}
+                  placeholder="Explain the unique architectural nuances, distinct algorithms, datasets, or DBIT department scope that differentiates your proposal..."
+                  className="w-full bg-[#F4F5F8] rounded-2xl p-3 text-xs text-slate-900 border border-slate-200 focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden font-medium"
+                />
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                  <span>
+                    Words: {pitchDefense.trim() ? pitchDefense.trim().split(/\s+/).length : 0} / 200
+                  </span>
+                  {aiSuggestions.length > 0 && (
+                    <span className="text-emerald-600 font-bold font-sans">
+                      Novelty points ready for Coordinator Review
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Team Members Selection from Students Database */}
+            <div className="bg-white rounded-3xl p-5 shadow-xs border border-slate-100 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-slate-900" />
+                    <span>Team Members (DBIT Student Database)</span>
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {teamMembers.length} / 4 students selected • Picked from registered accounts
+                  </span>
+                </div>
+                
                 <button
                   type="button"
-                  disabled={isAiAnalyzing}
-                  onClick={handleGenerateAiDefense}
-                  className="inline-flex items-center gap-1 bg-white hover:bg-red-50 text-red-700 border border-red-300 text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-2xs transition-colors"
+                  onClick={() => setShowStudentPicker(!showStudentPicker)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 bg-[#D4F938] hover:bg-[#cbf525] px-3.5 py-1.5 rounded-full shadow-xs transition-all cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-red-600" />
-                  <span>{isAiAnalyzing ? 'Drafting...' : 'AI Assist Pitch Phrasing'}</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{showStudentPicker ? 'Hide Student List' : 'Choose From Student DB'}</span>
                 </button>
               </div>
 
-              <textarea
-                id={pitchDefenseId}
-                rows={3}
-                value={pitchDefense}
-                onChange={e => setPitchDefense(e.target.value)}
-                placeholder="Explain the unique architectural nuances, distinct algorithms, datasets, or DBIT department scope that differentiates your proposal..."
-                className="w-full px-3 py-2 text-xs border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white"
-              />
+              {/* Selected Team Members Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {teamMembers.map((m, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-[#F4F5F8] px-3.5 py-2.5 rounded-2xl border border-slate-200/60 shadow-2xs">
+                    <div className="truncate pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-900 truncate">{m.name}</span>
+                        {m.isLeader && (
+                          <span className="text-[9px] bg-[#18191E] text-[#D4F938] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                            Leader
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
+                        {m.rollNo && <span>Roll: {m.rollNo} • </span>}
+                        <span>{m.email}</span>
+                      </div>
+                    </div>
 
-              <div className="flex items-center justify-between text-[11px] text-zinc-500">
-                <span>
-                  Words: {pitchDefense.trim() ? pitchDefense.trim().split(/\s+/).length : 0} / 200 target
-                </span>
-                {aiSuggestions.length > 0 && (
-                  <span className="text-red-700 font-medium">
-                    Novelty points generated based on DBIT rubric
-                  </span>
-                )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {!m.isLeader && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTeamMembers(teamMembers.map((mem, i) => ({
+                              ...mem,
+                              isLeader: i === idx
+                            })));
+                          }}
+                          className="text-[10px] text-slate-600 hover:text-slate-950 px-2 py-1 rounded-full bg-white border border-slate-200 font-bold transition-colors cursor-pointer"
+                          title="Set as team leader"
+                        >
+                          Leader
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTeamMembers(teamMembers.filter((_, i) => i !== idx));
+                        }}
+                        className="text-slate-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors cursor-pointer"
+                        title="Remove student"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
 
-          {/* Team Members List */}
-          <div className="border border-zinc-200 rounded-xl p-3 bg-zinc-50/60">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-zinc-800">
-                Team Members (Class SE COMPS C)
-              </span>
-              <span className="text-[11px] text-zinc-500">
-                4 Students Max (DBIT Project Guidelines)
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {teamMembers.map((m, idx) => (
-                <div key={idx} className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-lg border border-zinc-200">
-                  <div className="truncate">
-                    <span className="font-semibold text-zinc-900">{m.name}</span>
-                    <span className="text-zinc-500 ml-1.5 text-[11px]">Roll {m.rollNo}</span>
-                    {m.isLeader && (
-                      <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-700 px-1 rounded font-bold">
-                        Leader
-                      </span>
-                    )}
+              {/* Database Student Picker Drawer */}
+              {showStudentPicker && (
+                <div className="p-4 bg-[#F4F5F8] rounded-2xl border border-slate-200 space-y-2.5 mt-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                    <span>Registered Students in Cloud SQL:</span>
+                    <span className="text-slate-400 font-mono">{availableStudents.length} accounts found</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                    {availableStudents.map(stud => {
+                      const isAlreadySelected = teamMembers.some(m => m.email.toLowerCase() === stud.email.toLowerCase());
+
+                      return (
+                        <button
+                          key={stud.id}
+                          type="button"
+                          disabled={isAlreadySelected || teamMembers.length >= 4}
+                          onClick={() => {
+                            if (teamMembers.length >= 4) return;
+                            setTeamMembers([
+                              ...teamMembers,
+                              {
+                                name: stud.name,
+                                rollNo: stud.rollNo || '',
+                                email: stud.email,
+                                isLeader: teamMembers.length === 0
+                              }
+                            ]);
+                          }}
+                          className={`p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between cursor-pointer ${
+                            isAlreadySelected
+                              ? 'bg-white border-[#D4F938] text-slate-900 opacity-60 cursor-default shadow-xs'
+                              : teamMembers.length >= 4
+                                ? 'bg-slate-100 border-slate-200 opacity-50 cursor-not-allowed'
+                                : 'bg-white border-slate-200 hover:border-[#D4F938] hover:shadow-xs'
+                          }`}
+                        >
+                          <div className="truncate">
+                            <div className="font-bold text-slate-900 text-xs truncate">{stud.name}</div>
+                            <div className="text-[10px] text-slate-500 font-mono truncate">
+                              Roll {stud.rollNo || 'N/A'} • {stud.cohort || 'SE COMPS'}
+                            </div>
+                          </div>
+
+                          {isAlreadySelected ? (
+                            <Check className="w-4 h-4 text-slate-900 shrink-0 ml-1" />
+                          ) : (
+                            <Plus className="w-3.5 h-3.5 text-slate-400 hover:text-slate-900 shrink-0 ml-1" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
 
-        {/* Modal Footer */}
-        <div className="bg-zinc-100 border-t border-zinc-200 px-6 py-3 flex items-center justify-between">
+        {/* Modal Action Footer */}
+        <div className="bg-[#18191E] px-6 py-3.5 flex items-center justify-between border-t border-white/10 rounded-b-[30px]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-zinc-600 hover:text-zinc-800"
+            className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-slate-200 hover:text-white transition-all cursor-pointer"
           >
             Cancel
           </button>
@@ -509,7 +645,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
             type="button"
             onClick={handleSubmit}
             disabled={!title.trim() || !abstract.trim()}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold px-5 py-2 rounded-lg shadow-xs transition-colors"
+            className="inline-flex items-center gap-2 bg-[#D4F938] hover:bg-[#cbf525] disabled:opacity-50 text-slate-950 font-black text-xs px-6 py-3 rounded-full shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             <span>
@@ -519,6 +655,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
             </span>
           </button>
         </div>
+
       </div>
     </div>
   );

@@ -61,23 +61,23 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs overflow-hidden">
+    <div className="bg-white rounded-[28px] border border-slate-200/80 shadow-sm overflow-hidden">
       {/* Header bar */}
-      <div className="bg-gradient-to-r from-slate-900 to-zinc-900 text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white">
-            <FolderGit2 className="w-4 h-4 text-emerald-400" />
+      <div className="bg-[#18191E] text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-[#D4F938]">
+            <FolderGit2 className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold tracking-tight text-white">
+              <h3 className="text-sm font-extrabold tracking-tight text-white">
                 Stage 2 Development: GitHub Repository Sync
               </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+              <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-[#D4F938] text-black font-extrabold uppercase">
                 Live VCS Audit Trail
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-white/60">
               Verifies continuous code progression and milestone commits for SE COMPS Track 7
             </p>
           </div>
@@ -87,7 +87,7 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
           {githubData?.connected && (
             <button
               onClick={() => setShowConfig(!showConfig)}
-              className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2.5 py-1.5 rounded-lg border border-zinc-700 transition-colors"
+              className="text-xs bg-white/10 hover:bg-white/20 text-white font-semibold px-3.5 py-2 rounded-full border border-white/10 transition-colors cursor-pointer"
             >
               {showConfig ? 'Hide Config' : 'Change Repo'}
             </button>
@@ -96,25 +96,25 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
           <button
             onClick={() => handleSync()}
             disabled={isSyncing}
-            className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 bg-[#D4F938] hover:bg-[#c2e72f] text-black text-xs font-black px-4 py-2 rounded-full shadow-xs transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Syncing Repo...' : 'Sync Git HEAD'}</span>
+            <span>{isSyncing ? 'Syncing...' : 'Sync Git HEAD'}</span>
           </button>
         </div>
       </div>
 
       {/* Repo Settings / Connect Form */}
       {showConfig && (
-        <form onSubmit={handleSync} className="p-4 bg-zinc-50 border-b border-zinc-200 text-xs space-y-3">
+        <form onSubmit={handleSync} className="p-5 bg-[#F4F5F8] border-b border-slate-200/60 text-xs space-y-3">
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-zinc-800">Configure GitHub Repository Connection</span>
-            <span className="text-zinc-500 text-[11px]">Supports public repos & personal access tokens</span>
+            <span className="font-bold text-[#18191E]">Configure GitHub Repository Connection</span>
+            <span className="text-slate-500 text-[11px]">Supports public repos &amp; personal access tokens</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2">
-              <label className="block text-[11px] font-medium text-zinc-600 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 GitHub Repository (URL or owner/repo)
               </label>
               <input
@@ -123,11 +123,11 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
                 value={repoInput}
                 onChange={e => setRepoInput(e.target.value)}
                 placeholder="e.g. rishiks1207/dbit-project-track or https://github.com/owner/repo"
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-zinc-600 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Personal Access Token (optional)
               </label>
               <input
@@ -135,20 +135,20 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
                 value={tokenInput}
                 onChange={e => setTokenInput(e.target.value)}
                 placeholder="ghp_... (for private repos)"
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
               />
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-1">
-            <div className="text-[11px] text-zinc-500 flex items-center gap-1">
-              <Lock className="w-3 h-3" />
+            <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5" />
               <span>Token is kept local in browser session only</span>
             </div>
             <button
               type="submit"
               disabled={isSyncing}
-              className="bg-zinc-900 hover:bg-black text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors"
+              className="bg-[#18191E] hover:bg-black text-[#D4F938] text-xs font-bold px-5 py-2 rounded-full transition-colors cursor-pointer"
             >
               {isSyncing ? 'Connecting...' : 'Save & Sync'}
             </button>
@@ -158,55 +158,55 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
 
       {/* Notifications */}
       {errorMsg && (
-        <div className="px-5 py-2.5 bg-red-50 text-red-800 text-xs flex items-center gap-2 border-b border-red-200">
+        <div className="px-5 py-3 bg-red-50 text-red-900 text-xs flex items-center gap-2 border-b border-red-200">
           <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
       {successMsg && (
-        <div className="px-5 py-2.5 bg-emerald-50 text-emerald-800 text-xs flex items-center gap-2 border-b border-emerald-200">
+        <div className="px-5 py-3 bg-emerald-50 text-emerald-950 text-xs flex items-center gap-2 border-b border-emerald-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{successMsg}</span>
+          <span className="font-semibold">{successMsg}</span>
         </div>
       )}
 
       {/* Body: Connected Repo Stats & Commit Audit Feed */}
       {githubData ? (
-        <div className="p-5 space-y-4">
+        <div className="p-5 sm:p-6 space-y-4">
           {/* Repo Top Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Repository</span>
+            <div className="p-3.5 bg-[#F4F5F8] rounded-2xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Repository</span>
               <a 
                 href={githubData.repoUrl} 
                 target="_blank" 
                 rel="noreferrer"
-                className="font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-0.5 truncate"
+                className="font-extrabold text-[#18191E] hover:underline flex items-center gap-1 mt-0.5 truncate text-xs"
               >
                 <span>{githubData.owner}/{githubData.repo}</span>
-                <ArrowUpRight className="w-3 h-3 shrink-0" />
+                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
               </a>
             </div>
 
-            <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Default Branch</span>
-              <div className="flex items-center gap-1.5 font-bold text-zinc-800 mt-0.5">
-                <GitBranch className="w-3.5 h-3.5 text-zinc-500" />
+            <div className="p-3.5 bg-[#F4F5F8] rounded-2xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Default Branch</span>
+              <div className="flex items-center gap-1.5 font-black text-[#18191E] mt-0.5">
+                <GitBranch className="w-3.5 h-3.5 text-slate-500" />
                 <span>{githubData.defaultBranch}</span>
               </div>
             </div>
 
-            <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Primary Language</span>
-              <div className="flex items-center gap-1.5 font-bold text-zinc-800 mt-0.5">
-                <Code2 className="w-3.5 h-3.5 text-blue-500" />
+            <div className="p-3.5 bg-[#F4F5F8] rounded-2xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Primary Language</span>
+              <div className="flex items-center gap-1.5 font-black text-[#18191E] mt-0.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#D4F938] border border-black/30" />
                 <span>{githubData.primaryLanguage}</span>
               </div>
             </div>
 
-            <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Last Synced</span>
-              <div className="font-medium text-zinc-700 mt-0.5 text-[11px]">
+            <div className="p-3.5 bg-[#F4F5F8] rounded-2xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Last Synced</span>
+              <div className="font-bold text-[#18191E] mt-0.5 text-xs">
                 {githubData.lastSyncedAt ? new Date(githubData.lastSyncedAt).toLocaleTimeString() : 'Just now'}
               </div>
             </div>
@@ -214,30 +214,30 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
 
           {/* Commits Stream: Audit Trail */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
-                <GitCommit className="w-3.5 h-3.5 text-blue-600" />
-                <span>Verified Commits Stream (Exp 5 & Exp 6 Stage Progress)</span>
+            <div className="flex items-center justify-between mb-2.5">
+              <h4 className="text-xs font-bold text-[#18191E] flex items-center gap-1.5 uppercase tracking-wide">
+                <GitCommit className="w-4 h-4 text-black" />
+                <span>Verified Commits Stream (Exp 5 &amp; Exp 6 Stage Progress)</span>
               </h4>
-              <span className="text-[11px] text-zinc-500">
+              <span className="text-[11px] text-slate-500">
                 Click commit to link deliverable to current milestone
               </span>
             </div>
 
-            <div className="divide-y divide-zinc-100 border border-zinc-200 rounded-xl overflow-hidden bg-white text-xs">
+            <div className="divide-y divide-slate-100 border border-slate-200/80 rounded-2xl overflow-hidden bg-white text-xs">
               {githubData.latestCommits && githubData.latestCommits.length > 0 ? (
                 githubData.latestCommits.map((commit, idx) => (
-                  <div key={idx} className="p-3 hover:bg-zinc-50 flex flex-wrap items-center justify-between gap-2 transition-colors">
-                    <div className="flex items-start gap-2.5 max-w-[70%]">
-                      <span className="mt-0.5 font-mono text-[11px] bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded border border-zinc-300 font-semibold shrink-0">
+                  <div key={idx} className="p-3.5 hover:bg-[#F4F5F8] flex flex-wrap items-center justify-between gap-2 transition-colors">
+                    <div className="flex items-start gap-3 max-w-[75%]">
+                      <span className="mt-0.5 font-mono text-[11px] bg-[#18191E] text-[#D4F938] px-2.5 py-0.5 rounded-full font-bold shrink-0">
                         {commit.sha}
                       </span>
                       <div>
-                        <p className="font-medium text-zinc-900 line-clamp-1">
+                        <p className="font-bold text-[#18191E] line-clamp-1">
                           {commit.message}
                         </p>
-                        <p className="text-[11px] text-zinc-500 mt-0.5">
-                          by <span className="font-semibold text-zinc-700">{commit.author}</span> • {new Date(commit.date).toLocaleDateString()}
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          by <span className="font-semibold text-slate-800">{commit.author}</span> • {new Date(commit.date).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -247,25 +247,25 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
                         <button
                           type="button"
                           onClick={() => onLinkCommitToMilestone(commit.sha, commit.message)}
-                          className="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-2 py-1 rounded transition-colors"
+                          className="text-xs bg-[#D4F938] hover:bg-[#c2e72f] text-black font-extrabold px-3 py-1.5 rounded-full transition-colors cursor-pointer"
                         >
-                          Link to Milestone
+                          Link to Gate
                         </button>
                       )}
                       <a
                         href={commit.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-zinc-400 hover:text-zinc-600 p-1"
+                        className="text-slate-400 hover:text-black p-1"
                         aria-label="View commit on GitHub"
                       >
-                        <ExternalLink className="w-3.5 h-3.5" />
+                        <ExternalLink className="w-4 h-4" />
                       </a>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="p-6 text-center text-zinc-400">
+                <div className="p-6 text-center text-slate-400">
                   No commits found in this repository yet.
                 </div>
               )}
@@ -273,8 +273,8 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
           </div>
         </div>
       ) : (
-        <div className="p-8 text-center text-xs text-zinc-500">
-          <FolderGit2 className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
+        <div className="p-8 text-center text-xs text-slate-500">
+          <FolderGit2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <p>No repository connected yet. Click &ldquo;Save &amp; Sync&rdquo; above to link your GitHub project.</p>
         </div>
       )}

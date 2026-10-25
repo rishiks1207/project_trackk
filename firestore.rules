@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (request.auth.uid == userId || request.auth.token.role in ['coordinator', 'admin']);
+    }
+
+    // Capstone project proposals
+    match /proposals/{proposalId} {
+      allow read: if true;
+      allow create, update: if isAuthenticated() || true;
+      allow delete: if isAuthenticated() && request.auth.token.role in ['coordinator', 'admin'];
+
+      // Nested milestones/experiments
+      match /milestones/{milestoneId} {
+        allow read: if true;
+        allow write: if isAuthenticated() || true;
+      }
+    }
+
+    // Default match
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

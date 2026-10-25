@@ -1,13 +1,19 @@
 import { pgTable, text, serial, integer, timestamp, boolean, doublePrecision, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-// Users table (linked to Firebase Auth UID)
+// Users table (linked to credentials, roles, and project relations)
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   uid: text('uid').notNull().unique(),
-  email: text('email').notNull(),
-  name: text('name'),
-  role: text('role').default('student'),
+  email: text('email').notNull().unique(),
+  password: text('password').notNull().default('dbit2026'),
+  name: text('name').notNull(),
+  role: text('role').notNull().default('student'), // 'admin' | 'coordinator' | 'guide' | 'student'
+  rollNo: text('roll_no'),
+  department: text('department').default('Computer Engineering'),
+  cohort: text('cohort').default('SE COMPS C (Batch A)'),
+  groupNo: integer('group_no'),
+  trackNo: integer('track_no'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -70,6 +76,18 @@ export const feedbackHistory = pgTable('feedback_history', {
   status: text('status').notNull(),
   remarks: text('remarks').notNull(),
   actionItems: jsonb('action_items').$type<string[]>().default([]),
+  timestamp: timestamp('timestamp').defaultNow(),
+});
+
+// Guide Messages table (direct guide texts/notices to student groups)
+export const guideMessages = pgTable('guide_messages', {
+  id: text('id').primaryKey(),
+  senderName: text('sender_name').notNull(),
+  senderRole: text('sender_role').notNull().default('guide'),
+  targetGroupNo: integer('target_group_no').notNull(),
+  subject: text('subject').notNull(),
+  message: text('message').notNull(),
+  urgency: text('urgency').default('normal'),
   timestamp: timestamp('timestamp').defaultNow(),
 });
 

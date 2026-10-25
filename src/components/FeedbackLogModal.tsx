@@ -82,29 +82,29 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-zinc-200 w-full max-w-3xl my-8 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-[32px] shadow-2xl border border-slate-200/80 w-full max-w-3xl my-8 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white px-6 py-4 flex items-center justify-between">
+        <div className="bg-[#18191E] text-white px-6 py-4 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="bg-purple-800 text-purple-200 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+              <span className="bg-[#D4F938] text-black text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase">
                 UC-08: Log Written Remarks
               </span>
-              <span className="bg-indigo-800 text-indigo-200 text-[10px] font-bold px-2 py-0.5 rounded">
-                Automated Reminder Alerts
+              <span className="bg-white/10 text-white text-[10px] font-bold px-3 py-0.5 rounded-full">
+                Automated Review Alerts
               </span>
             </div>
-            <h3 className="text-base font-bold text-white mt-1">
+            <h3 className="text-base font-extrabold text-white mt-1">
               Centralized Written Feedback Log &amp; Audit Trail
             </h3>
-            <p className="text-xs text-purple-200">
-              Permanent record of reviews solving the 44.2% &ge; 3 days feedback delay bottleneck
+            <p className="text-xs text-white/60">
+              Permanent record of reviews solving communication delays
             </p>
           </div>
 
           <button
             onClick={onClose}
-            className="text-purple-300 hover:text-white p-1 rounded-lg hover:bg-white/10"
+            className="text-white/60 hover:text-white p-1 rounded-full text-xl font-bold"
             aria-label="Close feedback log"
           >
             <X className="w-5 h-5" />
@@ -112,11 +112,11 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
         </div>
 
         {/* Automated Reminder Alert Banner */}
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-amber-900">
-            <Bell className="w-4 h-4 text-amber-600 shrink-0" />
+        <div className="bg-[#F4F5F8] border-b border-slate-200/80 px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-slate-800">
+            <Bell className="w-4 h-4 text-black shrink-0" />
             <span>
-              Pending Guide Sign-Off: <strong>{proposal.guideName}</strong> (Exp 5 NLP SBERT Engine)
+              Pending Guide Sign-Off: <strong className="text-black">{proposal.guideName}</strong> (Exp 5 NLP SBERT Engine)
             </span>
           </div>
 
@@ -124,14 +124,14 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
             type="button"
             onClick={handleTriggerReminder}
             disabled={reminderSent}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${
               reminderSent 
-                ? 'bg-emerald-600 text-white' 
-                : 'bg-amber-600 hover:bg-amber-700 text-white'
+                ? 'bg-[#C6B5FD] text-black' 
+                : 'bg-[#D4F938] hover:bg-[#c2e72f] text-black'
             }`}
           >
             <Bell className="w-3.5 h-3.5" />
-            <span>{reminderSent ? '✓ Reminder Dispatched' : 'Send Automated Alert Ping'}</span>
+            <span>{reminderSent ? '✓ Reminder Dispatched' : 'Send Alert Ping'}</span>
           </button>
         </div>
 
@@ -139,50 +139,50 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
           {/* History Timeline */}
           <div>
-            <h4 className="font-bold text-zinc-900 uppercase tracking-wider mb-3 text-[11px] flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+            <h4 className="font-bold text-[#18191E] uppercase tracking-wider mb-3 text-[11px] flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-black" />
               <span>Auditable Feedback Timeline</span>
             </h4>
 
             <div className="space-y-3">
               {proposal.feedbackHistory && proposal.feedbackHistory.length > 0 ? (
                 proposal.feedbackHistory.map((item) => (
-                  <div key={item.id} className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/70 space-y-2">
+                  <div key={item.id} className="p-5 rounded-2xl border border-slate-200 bg-[#F4F5F8] space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         {item.authorRole === 'coordinator' ? (
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          <span className="bg-[#18191E] text-[#D4F938] text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3 text-[#D4F938]" />
                             <span>Coordinator</span>
                           </span>
                         ) : (
-                          <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                            <UserCheck className="w-3 h-3 text-purple-600" />
+                          <span className="bg-[#C6B5FD] text-black text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                            <UserCheck className="w-3 h-3 text-black" />
                             <span>Guide</span>
                           </span>
                         )}
-                        <strong className="text-zinc-900">{item.authorName}</strong>
+                        <strong className="text-black font-extrabold">{item.authorName}</strong>
                       </div>
 
-                      <div className="text-[11px] text-zinc-500 font-mono">
+                      <div className="text-[11px] text-slate-500 font-mono">
                         {new Date(item.timestamp).toLocaleString()}
                       </div>
                     </div>
 
-                    <div className="text-[11px] text-zinc-500 font-medium">
-                      Stage: <span className="text-zinc-800">{item.stage}</span>
+                    <div className="text-[11px] text-slate-600 font-medium">
+                      Stage: <span className="text-black font-bold">{item.stage}</span>
                     </div>
 
-                    <p className="text-zinc-700 leading-relaxed bg-white p-3 rounded-lg border border-zinc-200">
+                    <p className="text-slate-800 leading-relaxed bg-white p-3.5 rounded-xl border border-slate-200">
                       {item.remarks}
                     </p>
 
                     {item.actionItems && item.actionItems.length > 0 && (
                       <div className="pt-1">
-                        <span className="text-[10px] uppercase font-bold text-zinc-500 block mb-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
                           Action Items:
                         </span>
-                        <ul className="list-disc pl-4 space-y-0.5 text-zinc-600 text-[11px]">
+                        <ul className="list-disc pl-4 space-y-0.5 text-slate-700 text-xs">
                           {item.actionItems.map((act, idx) => (
                             <li key={idx}>{act}</li>
                           ))}
@@ -192,7 +192,7 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
                   </div>
                 ))
               ) : (
-                <div className="p-6 text-center text-zinc-400 border border-dashed rounded-xl">
+                <div className="p-6 text-center text-slate-400 border border-dashed rounded-2xl">
                   No feedback entries recorded yet.
                 </div>
               )}
@@ -200,25 +200,25 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
           </div>
 
           {/* Add Written Feedback (Faculty Guide or Coordinator) */}
-          <form onSubmit={handleSubmitFeedback} className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3">
+          <form onSubmit={handleSubmitFeedback} className="bg-white p-5 rounded-2xl border border-slate-200 space-y-3.5 shadow-xs">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-zinc-800">
+              <span className="font-extrabold text-[#18191E]">
                 Log New Written Feedback ({currentRole})
               </span>
-              <span className="text-[11px] text-zinc-500">
+              <span className="text-[11px] text-slate-500">
                 Creates permanent timestamped record
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
                   Target Stage Gate
                 </label>
                 <select
                   value={stage}
                   onChange={e => setStage(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-zinc-300 rounded-lg bg-white"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl bg-[#F4F5F8] text-xs font-bold text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
                 >
                   <option value="Topic Approval">Topic Approval</option>
                   <option value="Stage 1: Exp 1-4 Design">Stage 1: Exp 1-4 Design</option>
@@ -229,13 +229,13 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
                   Review Status
                 </label>
                 <select
                   value={status}
                   onChange={e => setStatus(e.target.value as any)}
-                  className="w-full px-3 py-1.5 border border-zinc-300 rounded-lg bg-white"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl bg-[#F4F5F8] text-xs font-bold text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
                 >
                   <option value="comment">Comment / Mentoring Note</option>
                   <option value="approved">Milestone Approved &amp; Signed</option>
@@ -245,7 +245,7 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-zinc-600 mb-1">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
                 Faculty Remarks &amp; Mentoring Notes <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -254,12 +254,12 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
                 value={remarks}
                 onChange={e => setRemarks(e.target.value)}
                 placeholder="Log specific guidance on technical architecture, algorithm optimizations, or deliverables..."
-                className="w-full px-3 py-2 border border-zinc-300 rounded-lg bg-white"
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl bg-[#F4F5F8] text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-zinc-600 mb-1">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
                 Add Actionable To-Do Items (Optional)
               </label>
               <div className="flex gap-2">
@@ -268,12 +268,12 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
                   value={actionItemInput}
                   onChange={e => setActionItemInput(e.target.value)}
                   placeholder="e.g. Include cosine similarity ROC curve in Exp 5 report"
-                  className="flex-1 px-3 py-1.5 border border-zinc-300 rounded-lg bg-white text-xs"
+                  className="flex-1 px-3.5 py-2 border border-slate-200 rounded-xl bg-[#F4F5F8] text-xs"
                 />
                 <button
                   type="button"
                   onClick={handleAddActionItem}
-                  className="px-3 py-1.5 bg-zinc-200 hover:bg-zinc-300 rounded-lg font-medium text-zinc-800"
+                  className="px-4 py-2 bg-[#18191E] text-white hover:bg-black rounded-xl font-bold text-xs cursor-pointer"
                 >
                   Add
                 </button>
@@ -284,13 +284,13 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
                   {actionItems.map((act, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1 bg-white border border-zinc-300 px-2 py-0.5 rounded text-[11px] text-zinc-700"
+                      className="inline-flex items-center gap-1.5 bg-[#F4F5F8] border border-slate-200 px-3 py-1 rounded-full text-xs font-bold text-slate-800"
                     >
                       <span>{act}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveActionItem(idx)}
-                        className="text-zinc-400 hover:text-red-500"
+                        className="text-slate-400 hover:text-red-500 font-bold"
                       >
                         &times;
                       </button>
@@ -304,7 +304,7 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
               <button
                 type="submit"
                 disabled={!remarks.trim()}
-                className="inline-flex items-center gap-1.5 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 bg-[#D4F938] hover:bg-[#c2e72f] disabled:opacity-50 text-black font-extrabold px-6 py-2.5 rounded-full transition-colors cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Save Written Feedback</span>
@@ -314,11 +314,11 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-zinc-100 border-t border-zinc-200 px-6 py-3 flex justify-end">
+        <div className="bg-[#F4F5F8] border-t border-slate-200 px-6 py-3.5 flex justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-zinc-700 hover:text-zinc-900"
+            className="px-5 py-2 text-xs font-bold text-slate-700 hover:text-black"
           >
             Close
           </button>

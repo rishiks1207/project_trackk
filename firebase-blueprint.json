@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "DBIT ProjectTrack User profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["student", "guide", "coordinator", "admin"] },
+        "department": { "type": "string" },
+        "groupId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "Student engineering project proposal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "abstract": { "type": "string" },
+        "groupId": { "type": "string" },
+        "cohort": { "type": "string" },
+        "domain": { "type": "string" },
+        "guideId": { "type": "string" },
+        "status": { "type": "string" },
+        "sbertScore": { "type": "number" },
+        "cosineSimilarity": { "type": "number" },
+        "noveltyStatus": { "type": "string" },
+        "repositoryUrl": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "groupId", "status"]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "description": "14-week experiment milestone",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "proposalId": { "type": "string" },
+        "title": { "type": "string" },
+        "deliverable": { "type": "string" },
+        "progress": { "type": "number" },
+        "status": { "type": "string" },
+        "startWeek": { "type": "number" },
+        "endWeek": { "type": "number" },
+        "dueDate": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "proposalId", "title", "progress", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile collection"
+    },
+    "/proposals/{proposalId}": {
+      "schema": { "$ref": "#/entities/Proposal" },
+      "description": "Engineering project proposals"
+    },
+    "/proposals/{proposalId}/milestones/{milestoneId}": {
+      "schema": { "$ref": "#/entities/Milestone" },
+      "description": "Subcollection of experiment milestones for each proposal"
+    }
+  }
+}

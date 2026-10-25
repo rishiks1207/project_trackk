@@ -1,4 +1,32 @@
-export type UserRole = 'student' | 'guide' | 'coordinator';
+export type UserRole = 'student' | 'guide' | 'coordinator' | 'admin';
+
+export interface UserAccount {
+  id: number;
+  uid: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  password?: string;
+  rollNo?: string;
+  department?: string;
+  cohort?: string;
+  groupNo?: number;
+  trackNo?: number;
+  assignedProjectCount?: number;
+  relatedProposalTitle?: string;
+  createdAt?: string;
+}
+
+export interface GuideMessage {
+  id: string;
+  senderName: string;
+  senderRole: 'guide' | 'coordinator';
+  targetGroupNo: number;
+  subject: string;
+  message: string;
+  urgency: 'normal' | 'high' | 'critical';
+  timestamp: string;
+}
 
 export type ProposalStatus = 
   | 'draft'
@@ -65,6 +93,10 @@ export interface StageGateMilestone {
   guideApprovedBy?: string;
   guideApprovedDate?: string;
   deliverableType: 'uml_diagram' | 'github_pr' | 'test_report' | 'architecture_spec' | 'demo_video';
+  progress?: number;
+  startWeek?: number;
+  endWeek?: number;
+  deliverable?: string;
 }
 
 export interface GitHubSyncData {

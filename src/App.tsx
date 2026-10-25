@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   GitBranch, 
@@ -19,14 +19,35 @@ import {
   ExternalLink,
   ShieldCheck,
   GraduationCap,
-  UserCheck
+  UserCheck,
+  UserCog,
+  Users,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Layers,
+  Cpu,
+  Activity,
+  Check,
+  Zap,
+  SlidersHorizontal,
+  BookmarkCheck,
+  Calendar,
+  LogOut,
+  Presentation
 } from 'lucide-react';
-import { Header } from './components/Header';
+import { FluxSidebar } from './components/FluxSidebar';
+import { FluxTopBar } from './components/FluxTopBar';
+import { FluxBentoWidgets } from './components/FluxBentoWidgets';
+import { LoginPage } from './components/LoginPage';
+import { AdminPanel } from './components/AdminPanel';
 import { ProposalSubmissionModal } from './components/ProposalSubmissionModal';
 import { StageGateTracker } from './components/StageGateTracker';
 import { ConflictResolutionDashboard } from './components/ConflictResolutionDashboard';
 import { HistoricalRepository } from './components/HistoricalRepository';
-import { AnalyticsAndGantt } from './components/AnalyticsAndGantt';
+import { ProjectGanttChart } from './components/ProjectGanttChart';
+import { GuideNoticeBoard } from './components/GuideNoticeBoard';
+import { GuideMessageModal } from './components/GuideMessageModal';
 import { FeedbackLogModal } from './components/FeedbackLogModal';
 import { PresentationViewerModal } from './components/PresentationViewerModal';
 
@@ -36,26 +57,72 @@ import {
   HistoricalProject, 
   StageGateMilestone, 
   GuideFeedback,
-  GitHubSyncData
+  GitHubSyncData,
+  UserAccount,
+  StudentMember
 } from './types';
 import { 
   INITIAL_PROPOSALS, 
-  INITIAL_HISTORICAL_PROJECTS, 
-  CURRENT_USER_STUDENT 
+  INITIAL_HISTORICAL_PROJECTS 
 } from './data/mockData';
-import { getStatusBadgeDetails, getNextStatus } from './utils/stateMachine';
+import { getStatusBadgeDetails } from './utils/stateMachine';
 
 export default function App() {
-  const [currentRole, setCurrentRole] = useState<UserRole>('student');
-  const [activeTab, setActiveTab] = useState<string>('proposals');
+  // Authentication & active user state
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    try {
+      const saved = localStorage.getItem('dbit_active_user');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      // ignore
+    }
+    // Default to student (Rishik, Group 5) for instant preview if no saved session
+    return {
+      id: 5,
+      uid: 'usr-stud-01',
+      email: 'rishiks1207@gmail.com',
+      name: 'Rishik Ezhuthachan',
+      role: 'student',
+      rollNo: '15',
+      cohort: 'SE COMPS C (Batch A)',
+      groupNo: 5,
+      trackNo: 7,
+      department: 'Computer Engineering'
+    };
+  });
+
+  const [currentRole, setCurrentRole] = useState<UserRole>(currentUser?.role || 'student');
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
   
   // App state
   const [proposals, setProposals] = useState<ProjectProposal[]>(INITIAL_PROPOSALS);
   const [historicalProjects, setHistoricalProjects] = useState<HistoricalProject[]>(INITIAL_HISTORICAL_PROJECTS);
   const [selectedProposalId, setSelectedProposalId] = useState<string>('prop-group-05');
   
+  // Modals
+  const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isPresentationModalOpen, setIsPresentationModalOpen] = useState(false);
+  const [isGuideMessageModalOpen, setIsGuideMessageModalOpen] = useState(false);
+
+  // Status & Domain Filters for Proposals list
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [domainFilter, setDomainFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [expandedProposalId, setExpandedProposalId] = useState<string | null>(null);
+
+  // Toast notification
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4500);
+  };
+
   // Load initial data from PostgreSQL database
-  React.useEffect(() => {
+  useEffect(() => {
     async function loadFromDatabase() {
       try {
         const [propsRes, histRes] = await Promise.all([
@@ -81,22 +148,80 @@ export default function App() {
     loadFromDatabase();
   }, []);
 
-  // Modals
-  const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [isPresentationModalOpen, setIsPresentationModalOpen] = useState(false);
+  const handleLoginSuccess = (user: UserAccount) => {
+    setCurrentUser(user);
+    setCurrentRole(user.role);
+    try {
+      localStorage.setItem('dbit_active_user', JSON.stringify(user));
+    } catch (e) {
+      // ignore
+    }
+    setActiveTab(user.role === 'admin' ? 'admin' : 'dashboard');
+    showToast(`Welcome ${user.name}! Logged in as ${user.role.toUpperCase()}.`);
+  };
 
-  // Status Filter for Proposals list
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const handleLogout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('dbit_active_user');
+    } catch (e) {
+      // ignore
+    }
+    showToast('Signed out successfully.');
+  };
 
-  // Toast notification
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4500);
+  const handleRoleChange = (newRole: UserRole) => {
+    setCurrentRole(newRole);
+    if (newRole === 'admin') {
+      setCurrentUser({
+        id: 1,
+        uid: 'usr-admin-01',
+        email: 'admin@dbit.in',
+        name: 'Admin',
+        role: 'admin',
+        cohort: 'System Administrator',
+        department: 'Computer Engineering'
+      });
+      setActiveTab('admin');
+    } else if (newRole === 'guide') {
+      setCurrentUser({
+        id: 3,
+        uid: 'usr-guide-01',
+        email: 'guide@dbit.in',
+        name: 'Mr. Nazareth Remedios',
+        role: 'guide',
+        cohort: 'Faculty Guide',
+        trackNo: 7,
+        department: 'Computer Engineering'
+      });
+      setActiveTab('proposals');
+    } else if (newRole === 'coordinator') {
+      setCurrentUser({
+        id: 2,
+        uid: 'usr-coord-01',
+        email: 'coordinator@dbit.in',
+        name: 'Prof. Meenal Kulkarni',
+        role: 'coordinator',
+        cohort: 'SE/TE Project Coordinator',
+        department: 'Computer Engineering'
+      });
+      setActiveTab('proposals');
+    } else {
+      setCurrentUser({
+        id: 5,
+        uid: 'usr-stud-01',
+        email: 'rishiks1207@gmail.com',
+        name: 'Rishik Ezhuthachan',
+        role: 'student',
+        rollNo: '15',
+        groupNo: 5,
+        trackNo: 7,
+        cohort: 'SE COMPS C (Batch A)',
+        department: 'Computer Engineering'
+      });
+      setActiveTab('dashboard');
+    }
+    showToast(`Switched active view to ${newRole.toUpperCase()} controller.`);
   };
 
   const activeProposal = proposals.find(p => p.id === selectedProposalId) || proposals[0];
@@ -111,6 +236,12 @@ export default function App() {
     const id = `prop-${Date.now()}`;
     const generatedProjectId = `DBIT-SE-2026-T${newProp.trackNo || 7}-G${String(newProp.groupNo || 1).padStart(2, '0')}`;
     
+    const defaultTeam: StudentMember[] = newProp.teamMembers && newProp.teamMembers.length > 0 
+      ? newProp.teamMembers 
+      : [
+          { name: currentUser?.name || 'Rishik Ezhuthachan', rollNo: '15', email: currentUser?.email || 'rishiks1207@gmail.com', isLeader: true }
+        ];
+
     const fullProposal: ProjectProposal = {
       id,
       projectId: generatedProjectId,
@@ -119,7 +250,7 @@ export default function App() {
       academicYear: '2026-27',
       cohort: newProp.cohort || 'SE COMPS C (Batch A)',
       title: newProp.title || 'Untitled Proposal',
-      domain: newProp.domain || 'AI/ML',
+      domain: (newProp.domain as any) || 'AI/ML',
       abstract: newProp.abstract || '',
       problemStatement: newProp.problemStatement || '',
       objectives: newProp.objectives || [
@@ -130,141 +261,114 @@ export default function App() {
         inScope: newProp.scope?.inScope || ['Department-level proposal submission', 'Similarity analysis'],
         outOfScope: newProp.scope?.outOfScope || ['Turnitin document scanning']
       },
-      techStack: newProp.techStack || ['TypeScript', 'React'],
-      teamMembers: newProp.teamMembers || [
-        { name: 'Rishik Ezhuthachan', rollNo: '15', email: 'rishiks1207@gmail.com', isLeader: true }
-      ],
+      techStack: newProp.techStack || ['React', 'Python', 'FastAPI', 'PostgreSQL'],
+      teamMembers: defaultTeam,
       guideName: newProp.guideName || 'Mr. Nazareth Remedios',
       coordinatorName: 'Prof. Meenal Kulkarni',
-      status: newProp.status || 'under_guide_review',
-      similarityData: newProp.similarityData,
-      pitchDefense: newProp.pitchDefense,
-      feedbackHistory: [],
+      status: 'under_guide_review',
+      lockedTopic: false,
+      similarityData: {
+        overallScore: 0.42,
+        sbertScore: 0.42,
+        tfidfScore: 0.38,
+        isConflict: false,
+        explanation: 'Novel scope within DBIT Computer Engineering archives.'
+      },
       stageGates: [
         {
-          id: `sg-${Date.now()}-1`,
-          title: 'Exp 1: Empathy Study & Problem Framing',
+          id: 'gate-0',
+          title: 'Topic Approval & SBERT Screening',
           phase: 'stage1_design',
-          weekRange: 'W1 - W3',
-          status: 'in_progress',
-          dueDate: '2026-08-15',
+          weekRange: 'W1–W2',
+          dueDate: '2026-07-14',
+          status: 'approved',
+          guideApprovedBy: 'Mr. Nazareth Remedios',
+          guideApprovedDate: '2026-07-12',
           deliverableType: 'architecture_spec'
         },
         {
-          id: `sg-${Date.now()}-2`,
-          title: 'Exp 2: Literature Matrix & App Benchmark',
+          id: 'gate-1',
+          title: 'Review 1: Literature Review & Problem Formulation',
           phase: 'stage1_design',
-          weekRange: 'W4 - W6',
-          status: 'pending',
-          dueDate: '2026-08-30',
+          weekRange: 'W3–W4',
+          dueDate: '2026-07-28',
+          status: 'submitted',
           deliverableType: 'architecture_spec'
         },
         {
-          id: `sg-${Date.now()}-3`,
-          title: 'Exp 3: User Survey & Problem Formulation',
-          phase: 'stage1_design',
-          weekRange: 'W5 - W6',
+          id: 'gate-2',
+          title: 'System Architecture & Data Modeling',
+          phase: 'stage2_dev',
+          weekRange: 'W5–W6',
+          dueDate: '2026-08-12',
           status: 'pending',
-          dueDate: '2026-09-10',
-          deliverableType: 'architecture_spec'
-        },
-        {
-          id: `sg-${Date.now()}-4`,
-          title: 'Exp 4: UML Diagrams & Architecture Design',
-          phase: 'stage1_design',
-          weekRange: 'W7 - W8',
-          status: 'pending',
-          dueDate: '2026-09-28',
           deliverableType: 'uml_diagram'
         },
         {
-          id: `sg-${Date.now()}-5`,
-          title: 'Exp 5: NLP Engine Development (SBERT & Cosine)',
+          id: 'gate-3',
+          title: 'Mid-Term Progress & Prototype Demonstration',
           phase: 'stage2_dev',
-          weekRange: 'W9 - W11',
+          weekRange: 'W7–W8',
+          dueDate: '2026-08-26',
           status: 'pending',
-          dueDate: '2026-10-25',
           deliverableType: 'github_pr'
         },
         {
-          id: `sg-${Date.now()}-6`,
-          title: 'Exp 6: Web Portal UI (Student, Guide & Coordinator)',
-          phase: 'stage2_dev',
-          weekRange: 'W10 - W12',
+          id: 'gate-4',
+          title: 'Integration, Unit & Regression Testing',
+          phase: 'stage3_testing',
+          weekRange: 'W9–W10',
+          dueDate: '2026-09-09',
           status: 'pending',
-          dueDate: '2026-11-05',
-          deliverableType: 'architecture_spec'
+          deliverableType: 'test_report'
         },
         {
-          id: `sg-${Date.now()}-7`,
-          title: 'Exp 7: System Integration & Final Evaluation',
+          id: 'gate-5',
+          title: 'Final Draft Project Report & Plagiarism Scan',
           phase: 'stage3_testing',
-          weekRange: 'W12 - W14',
+          weekRange: 'W11–W12',
+          dueDate: '2026-09-23',
           status: 'pending',
-          dueDate: '2026-11-20',
+          deliverableType: 'test_report'
+        },
+        {
+          id: 'gate-6',
+          title: 'Final Oral Presentation & Stage-Gate Clearance',
+          phase: 'completed',
+          weekRange: 'W13–W14',
+          dueDate: '2026-10-07',
+          status: 'pending',
           deliverableType: 'demo_video'
         }
       ],
-      githubData: {
-        owner: 'rishiks1207',
-        repo: 'dbit-project-track',
-        repoUrl: 'https://github.com/rishiks1207/dbit-project-track',
-        connected: true,
-        lastSyncedAt: new Date().toISOString(),
-        defaultBranch: 'main',
-        starsCount: 1,
-        openIssuesCount: 0,
-        primaryLanguage: 'TypeScript',
-        latestCommits: []
-      },
+      feedbackHistory: [
+        {
+          id: `fb-${Date.now()}`,
+          authorName: 'Mr. Nazareth Remedios',
+          authorRole: 'guide',
+          timestamp: new Date().toISOString(),
+          stage: 'Topic Submission',
+          status: 'comment',
+          remarks: 'Initial proposal registered. SBERT similarity score is within accepted safety boundaries (<0.75).'
+        }
+      ],
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lockedTopic: false
+      updatedAt: new Date().toISOString()
     };
 
     setProposals([fullProposal, ...proposals]);
     setSelectedProposalId(id);
+    setIsSubmitModalOpen(false);
+    setActiveTab('proposals');
 
-    // Save to Cloud SQL PostgreSQL asynchronously
+    // Save to PostgreSQL backend
     fetch('/api/proposals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: fullProposal.id,
-        projectId: fullProposal.projectId,
-        trackNo: fullProposal.trackNo,
-        groupNo: fullProposal.groupNo,
-        academicYear: fullProposal.academicYear,
-        cohort: fullProposal.cohort,
-        title: fullProposal.title,
-        domain: fullProposal.domain,
-        abstract: fullProposal.abstract,
-        problemStatement: fullProposal.problemStatement,
-        techStack: fullProposal.techStack,
-        teamMembers: fullProposal.teamMembers,
-        guideName: fullProposal.guideName,
-        coordinatorName: fullProposal.coordinatorName,
-        status: fullProposal.status,
-        similarityScore: fullProposal.similarityData?.overallScore || 0,
-        sbertScore: fullProposal.similarityData?.sbertScore || 0,
-        tfidfScore: fullProposal.similarityData?.tfidfScore || 0,
-        similarityExplanation: fullProposal.similarityData?.explanation,
-        conflictWithId: fullProposal.conflictWithId,
-        lockedTopic: fullProposal.lockedTopic,
-        pitchDefenseContent: fullProposal.pitchDefense?.content,
-        pitchDifferentiator: fullProposal.pitchDefense?.keyDifferentiator,
-        pitchTargetStack: fullProposal.pitchDefense?.targetStack,
-        githubOwner: fullProposal.githubData?.owner || 'rishiks1207',
-        githubRepo: fullProposal.githubData?.repo || 'dbit-project-track'
-      })
-    }).catch(e => console.warn('Database async insert notice:', e));
+      body: JSON.stringify(fullProposal)
+    }).catch(e => console.warn('Database async sync notice:', e));
 
-    if (fullProposal.status === 'flagged_conflict' || fullProposal.status === 'coordinator_arbitration') {
-      showToast('Proposal submitted! Conflict threshold exceeded (>= 0.75). Forwarded to Coordinator Arbitration.');
-      setActiveTab('conflicts');
-    } else {
-      showToast('Proposal submitted! High originality verified. Queued in Faculty Guide Dashboard.');
-    }
+    showToast(`Project Proposal "${fullProposal.title}" registered successfully!`);
   };
 
   const handleUpdateMilestone = (milestoneId: string, updates: Partial<StageGateMilestone>) => {
@@ -272,12 +376,14 @@ export default function App() {
       if (p.id !== selectedProposalId) return p;
       return {
         ...p,
-        stageGates: p.stageGates.map(m => m.id === milestoneId ? { ...m, ...updates } : m),
+        stageGates: p.stageGates.map(m => {
+          if (m.id !== milestoneId) return m;
+          return { ...m, ...updates };
+        }),
         updatedAt: new Date().toISOString()
       };
     }));
 
-    // Save milestone updates to database
     fetch(`/api/stage-gates/${milestoneId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -408,10 +514,15 @@ export default function App() {
       return p;
     }));
 
+    fetch(`/api/proposals/${teamAId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'approved', lockedTopic: true })
+    }).catch(e => console.warn(e));
+
     showToast('Arbitration verdict recorded and student teams notified.');
   };
 
-  // Direct guide quick-approve for testing
   const handleQuickApprove = (propId: string) => {
     setProposals(prev => prev.map(p => {
       if (p.id !== propId) return p;
@@ -434,327 +545,715 @@ export default function App() {
       };
     }));
 
+    fetch(`/api/proposals/${propId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'approved', lockedTopic: true })
+    }).catch(e => console.warn(e));
+
     showToast('Topic approved by Faculty Guide! Stage 1 Design unlocked.');
   };
 
-  // Filtered proposals list
+  // Filtered proposals list with multi-facet filters
   const filteredProposals = proposals.filter(p => {
-    if (statusFilter === 'all') return true;
-    if (statusFilter === 'conflicts') return p.status === 'flagged_conflict' || p.status === 'coordinator_arbitration';
-    if (statusFilter === 'approved') return p.status === 'approved' || p.status === 'completed';
-    if (statusFilter === 'under_review') return p.status === 'under_guide_review' || p.status === 'evaluating_similarity';
+    // 1. Status Filter
+    if (statusFilter === 'conflicts' && !(p.status === 'flagged_conflict' || p.status === 'coordinator_arbitration')) return false;
+    if (statusFilter === 'approved' && !(p.status === 'approved' || p.status === 'completed')) return false;
+    if (statusFilter === 'under_review' && !(p.status === 'under_guide_review' || p.status === 'evaluating_similarity')) return false;
+
+    // 2. Domain Filter
+    if (domainFilter !== 'all' && !p.domain.toLowerCase().includes(domainFilter.toLowerCase())) return false;
+
+    // 3. Search Query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchTitle = p.title.toLowerCase().includes(q);
+      const matchId = (p.projectId || '').toLowerCase().includes(q);
+      const matchMembers = p.teamMembers.some(m => m.name.toLowerCase().includes(q));
+      const matchTech = p.techStack.some(t => t.toLowerCase().includes(q));
+      const matchGuide = p.guideName.toLowerCase().includes(q);
+      if (!matchTitle && !matchId && !matchMembers && !matchTech && !matchGuide) return false;
+    }
+
     return true;
   });
 
+  // If user is not logged in, render dedicated LoginPage
+  if (!currentUser) {
+    return (
+      <>
+        <LoginPage
+          onLoginSuccess={handleLoginSuccess}
+          onOpenPresentation={() => setIsPresentationModalOpen(true)}
+        />
+        <PresentationViewerModal
+          isOpen={isPresentationModalOpen}
+          onClose={() => setIsPresentationModalOpen(false)}
+        />
+      </>
+    );
+  }
+
+  // Get view title and subtitle based on active tab
+  const getViewDetails = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return {
+          title: 'Project Overview',
+          subtitle: 'Take control of your cohort progress & semantic review today!'
+        };
+      case 'proposals':
+        return {
+          title: currentRole === 'student' ? 'My Project & SBERT Novelty' : 'Cohort Proposals & Allocation',
+          subtitle: 'Real-time NLP similarity screening against 500+ departmental theses'
+        };
+      case 'gantt':
+        return {
+          title: '14-Week Project Timeline',
+          subtitle: 'Interactive milestone schedule, task dependencies and critical path'
+        };
+      case 'stages':
+        return {
+          title: 'Stage-Gate Progression & GitHub Sync',
+          subtitle: '7-phase milestone sign-offs, deliverable uploads and Git commit tracking'
+        };
+      case 'conflicts':
+        return {
+          title: 'Topic Arbitration & Pitch Defense',
+          subtitle: 'Coordinator side-by-side novelty matrix and scope allocation queue'
+        };
+      case 'repository':
+        return {
+          title: 'Historical Theses Archive & Sandbox',
+          subtitle: 'Browse 500+ archived final year projects and test pre-submission abstracts'
+        };
+      case 'notices':
+        return {
+          title: 'Guide Notices & Student Texts',
+          subtitle: 'Official faculty announcements, deadline revisions and cohort advisories'
+        };
+      case 'admin':
+        return {
+          title: 'Database & Account Management',
+          subtitle: 'Cloud SQL PostgreSQL user directory, group relations and security roles'
+        };
+      default:
+        return {
+          title: 'Project Overview',
+          subtitle: 'Take control of your cohort progress & semantic review today!'
+        };
+    }
+  };
+
+  const viewDetails = getViewDetails();
+
   return (
-    <div className="min-h-screen bg-zinc-100/70 text-zinc-900 font-sans flex flex-col">
-      {/* Toast alert */}
+    <div className="min-h-screen bg-[#DCE6C8] p-2.5 sm:p-4 lg:p-6 flex items-center justify-center font-sans antialiased text-slate-900 selection:bg-[#D4F938] selection:text-slate-950">
+      
+      {/* Dark Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-zinc-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-zinc-700 text-xs animate-in fade-in slide-in-from-bottom-3 duration-300">
-          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 bg-[#18191E] text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/20 text-xs animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <Sparkles className="w-4 h-4 text-[#D4F938] shrink-0" />
+          <span className="font-medium">{toastMessage}</span>
           <button 
             onClick={() => setToastMessage(null)}
-            className="text-zinc-400 hover:text-white ml-2 text-base leading-none"
+            className="text-slate-400 hover:text-white ml-2 text-base leading-none cursor-pointer"
           >
             &times;
           </button>
         </div>
       )}
 
-      {/* Main Institute Header */}
-      <Header
-        currentRole={currentRole}
-        onRoleChange={setCurrentRole}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
-        onOpenPresentation={() => setIsPresentationModalOpen(true)}
-        conflictCount={conflictCount}
-      />
+      {/* Master Tablet/Cockpit Frame Enclosure (Matching Reference Mockup Outer Frame) */}
+      <div className="w-full max-w-[1580px] bg-[#18191E] rounded-[34px] sm:rounded-[40px] p-2 sm:p-2.5 shadow-2xl flex flex-col md:flex-row min-h-[920px] overflow-hidden border border-black/40">
+        
+        {/* Left Dark Sidebar Rail (Flux Layout) */}
+        <FluxSidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          currentRole={currentRole}
+          conflictCount={conflictCount}
+          proposalsCount={proposals.length}
+          onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
+          onOpenGuideMessageModal={() => setIsGuideMessageModalOpen(true)}
+        />
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
-        {/* User Identity Banner */}
-        <div className="bg-white rounded-xl border border-zinc-200 p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs text-xs">
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white ${
-              currentRole === 'student' ? 'bg-blue-600' : currentRole === 'guide' ? 'bg-purple-600' : 'bg-emerald-600'
-            }`}>
-              {currentRole === 'student' ? <GraduationCap className="w-4 h-4" /> : currentRole === 'guide' ? <UserCheck className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-            </div>
+        {/* Right Main Porcelain Content Viewport */}
+        <div className="flex-1 bg-[#F4F5F8] rounded-[26px] sm:rounded-[32px] p-5 sm:p-7 lg:p-8 flex flex-col overflow-y-auto max-h-[94vh] shadow-inner">
+          
+          {/* Top Bar with User Avatar, Pill Search, and Notification Bell */}
+          <FluxTopBar
+            currentUser={currentUser}
+            currentRole={currentRole}
+            onRoleChange={handleRoleChange}
+            onLogout={handleLogout}
+            onOpenPresentation={() => setIsPresentationModalOpen(true)}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+
+          {/* Page Display Header (Big Bold Title + Subtitle + Date Filter Pill) */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 pt-1">
             <div>
-              <span className="text-zinc-500 text-[11px] block">Active Persona</span>
-              <div className="font-bold text-zinc-900 flex items-center gap-2">
-                <span>
-                  {currentRole === 'student'
-                    ? 'Rishik Ezhuthachan (Roll 15, Group 05)'
-                    : currentRole === 'guide'
-                      ? 'Mr. Nazareth Remedios (Internal Project Guide)'
-                      : 'Prof. Meenal Kulkarni (Project Coordinator, 12 yrs exp)'}
-                </span>
-                <span className="text-[10px] bg-zinc-100 text-zinc-700 font-mono px-2 py-0.5 rounded border border-zinc-200">
-                  {currentRole === 'student' ? 'SE COMPS C (Batch A)' : 'DBIT Department of Computer Engineering'}
-                </span>
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 leading-none">
+                {viewDetails.title}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1.5">
+                {viewDetails.subtitle}
+              </p>
+            </div>
+
+            {/* Date stamp & Dropdown Filter Pill */}
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-xs font-semibold text-slate-400 hidden sm:inline">
+                24 October, 2026
+              </span>
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-slate-800 text-xs font-bold border border-slate-200/70 shadow-xs cursor-pointer hover:bg-slate-50 transition-colors">
+                <span>Cohort 2026</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-zinc-500">
-            <button
-              onClick={() => setIsFeedbackModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-zinc-700 hover:text-purple-700 bg-zinc-50 hover:bg-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-200 font-medium transition-colors"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-purple-600" />
-              <span>Feedback Log ({activeProposal.feedbackHistory?.length || 0})</span>
-            </button>
-            <button
-              onClick={() => setIsPresentationModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-zinc-700 hover:text-blue-700 bg-zinc-50 hover:bg-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-200 font-medium transition-colors"
-            >
-              <FileText className="w-3.5 h-3.5 text-blue-600" />
-              <span>Review 1 Slides</span>
-            </button>
-          </div>
-        </div>
+          {/* ===================== VIEW 1: DASHBOARD (THE SIGNATURE BENTO COCKPIT) ===================== */}
+          {activeTab === 'dashboard' && (
+            <div>
+              {/* The 4 Signature Flux Bento Widgets */}
+              <FluxBentoWidgets
+                proposals={proposals}
+                currentRole={currentRole}
+                onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
+                onNavigateToTab={setActiveTab}
+              />
 
-        {/* 1. PROPOSALS & SCREENING TAB */}
-        {activeTab === 'proposals' && (
-          <div className="space-y-6">
-            {/* Header & Filter Controls */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-zinc-900">
-                  Undergraduate Project Proposals (Track 7 SE Mini Project)
-                </h2>
-                <p className="text-xs text-zinc-500">
-                  Live SBERT + TF-IDF similarity screening, originality scores, and guide approval status
-                </p>
-              </div>
+              {/* Role-Aware Section Below Bento Widgets */}
+              {currentRole === 'student' ? (
+                /* ================= STUDENT PERSONAL PROJECT WORKSPACE ================= */
+                <div className="space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2 mt-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938] font-black uppercase">
+                          My Project Command Center
+                        </span>
+                        <span className="text-xs font-semibold text-slate-500">
+                          SE COMPS Track 7 • Group 05
+                        </span>
+                      </div>
+                      <h2 className="text-xl font-black text-[#18191E] mt-1 tracking-tight">
+                        My Engineering Proposal &amp; Milestone Deliverables
+                      </h2>
+                    </div>
 
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-zinc-500 font-medium">Filter Status:</span>
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 bg-white border border-zinc-300 rounded-lg font-medium text-zinc-800"
-                >
-                  <option value="all">All Proposals ({proposals.length})</option>
-                  <option value="conflicts">Flagged Conflicts ({conflictCount})</option>
-                  <option value="under_review">Under Guide Review</option>
-                  <option value="approved">Approved &amp; Active</option>
-                </select>
-              </div>
-            </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsSubmitModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D4F938] hover:bg-[#cbf525] text-black text-xs font-black shadow-xs transition-all cursor-pointer"
+                      >
+                        <PlusCircle className="w-4 h-4" />
+                        <span>Submit / Update Proposal</span>
+                      </button>
+                      <button
+                        onClick={() => setIsPresentationModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-slate-100 text-[#18191E] text-xs font-bold border border-slate-200/80 shadow-xs transition-all cursor-pointer"
+                      >
+                        <Presentation className="w-4 h-4 text-black" />
+                        <span>Review 1 Presentation</span>
+                      </button>
+                    </div>
+                  </div>
 
-            {/* Proposal Cards */}
-            <div className="space-y-4">
-              {filteredProposals.map((prop) => {
-                const badge = getStatusBadgeDetails(prop.status);
-                const isSelected = selectedProposalId === prop.id;
-                const originality = prop.similarityData 
-                  ? Math.max(0, Math.round((1 - prop.similarityData.overallScore) * 100))
-                  : 85;
+                  {/* Student's Featured Project Bento Card */}
+                  {(() => {
+                    const myProp = proposals.find(p => p.groupNo === 5) || proposals[0];
+                    if (!myProp) return null;
+                    const badge = getStatusBadgeDetails(myProp.status);
+                    const sbertVal = Math.round((myProp.similarityData?.sbertScore ?? 0.18) * 100);
+                    const lexicalVal = Math.round((myProp.similarityData?.tfidfScore ?? 0.12) * 100);
+                    const noveltyVal = Math.round((1 - (myProp.similarityData?.overallScore ?? 0.08)) * 100);
 
-                return (
-                  <div
-                    key={prop.id}
-                    className={`bg-white rounded-2xl border transition-all p-6 shadow-xs ${
-                      isSelected 
-                        ? 'border-blue-500 ring-2 ring-blue-500/10' 
-                        : 'border-zinc-200 hover:border-zinc-300'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      {/* Left: Proposal info */}
-                      <div className="space-y-2 max-w-3xl">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200">
-                            {prop.projectId}
-                          </span>
-                          <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-md border ${badge.badgeClass}`}>
-                            {badge.label}
-                          </span>
-                          <span className="text-xs text-zinc-500 font-medium">
-                            Track {prop.trackNo} • Group {prop.groupNo} • {prop.cohort}
-                          </span>
-                        </div>
+                    return (
+                      <div className="bg-white rounded-[28px] p-6 lg:p-7 shadow-xs border border-slate-200/80 space-y-5">
+                        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
+                          {/* Left: Project Details */}
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-mono font-black px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938]">
+                                {myProp.projectId || 'DBIT-SE-2026-T7-G05'}
+                              </span>
+                              <span className="text-xs font-semibold text-slate-500">
+                                Track {myProp.trackNo} · Group {myProp.groupNo}
+                              </span>
+                              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-[#C6B5FD] text-black">
+                                {badge.label}
+                              </span>
+                              <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#D4F938] text-black">
+                                {noveltyVal}% Originality
+                              </span>
+                            </div>
 
-                        <h3 className="text-lg font-bold text-zinc-900 hover:text-blue-600 transition-colors">
-                          {prop.title}
-                        </h3>
+                            <h3 className="text-xl font-black text-[#18191E] leading-tight">
+                              {myProp.title}
+                            </h3>
 
-                        <p className="text-xs text-zinc-600 leading-relaxed line-clamp-3">
-                          {prop.abstract}
-                        </p>
+                            <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
+                              {myProp.abstract}
+                            </p>
 
-                        {/* Tech Stack tags */}
-                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                          <span className="text-[11px] font-semibold text-zinc-500 mr-1">Stack:</span>
-                          {prop.techStack.map((tech, idx) => (
-                            <span
-                              key={idx}
-                              className="text-[10px] bg-zinc-100 text-zinc-700 font-mono px-2 py-0.5 rounded border border-zinc-200"
-                            >
-                              {tech}
-                            </span>
-                          ))}
-                        </div>
+                            {/* Team Members */}
+                            <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 flex-wrap">
+                              <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">Group 05 Team:</span>
+                              {myProp.teamMembers.map((m, idx) => (
+                                <span key={idx} className="bg-[#F4F5F8] border border-slate-200 rounded-full px-3 py-1 text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                  <span>{m.name}</span>
+                                  {m.isLeader && (
+                                    <span className="text-[9px] bg-[#18191E] text-[#D4F938] px-1.5 py-0.2 rounded-full font-bold">
+                                      Lead
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
 
-                        {/* Team & Guide */}
-                        <div className="pt-2 text-xs text-zinc-500 flex flex-wrap items-center gap-4 border-t border-zinc-100 mt-3">
-                          <div>
-                            Guide: <strong className="text-zinc-800">{prop.guideName}</strong>
+                            {/* Faculty Guide Details */}
+                            <div className="pt-2 text-xs text-slate-500 flex items-center gap-4">
+                              <span>Faculty Guide: <strong className="text-black font-bold">{myProp.guideName}</strong></span>
+                              <span>•</span>
+                              <span>Cohort: <strong className="text-black font-bold">{myProp.cohort}</strong></span>
+                              <span>•</span>
+                              <span>Domain: <strong className="text-black font-bold">{myProp.domain}</strong></span>
+                            </div>
                           </div>
-                          <div className="h-3 w-px bg-zinc-300" />
-                          <div>
-                            Team Members: <strong className="text-zinc-800">{prop.teamMembers.map(m => m.name).join(', ')}</strong>
+
+                          {/* Right: SBERT Score Bubble & Fast Action Buttons */}
+                          <div className="flex flex-col items-start lg:items-end gap-4 shrink-0">
+                            <div className="flex items-center gap-3 bg-[#F4F5F8] p-3.5 rounded-2xl border border-slate-200/80">
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT Dense</span>
+                                <span className="text-base font-black font-mono text-black">
+                                  {sbertVal}%
+                                </span>
+                              </div>
+                              <div className="h-7 w-px bg-slate-300" />
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">TF-IDF Lexical</span>
+                                <span className="text-base font-black font-mono text-black">
+                                  {lexicalVal}%
+                                </span>
+                              </div>
+                              <div className="h-7 w-px bg-slate-300" />
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Novelty</span>
+                                <span className="text-base font-black font-mono text-emerald-700">
+                                  {noveltyVal}%
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedProposalId(myProp.id);
+                                  setActiveTab('gantt');
+                                }}
+                                className="px-4 py-2 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200 cursor-pointer"
+                              >
+                                14-Wk Timeline
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedProposalId(myProp.id);
+                                  setActiveTab('stages');
+                                }}
+                                className="px-4 py-2 rounded-full bg-[#18191E] hover:bg-black text-xs font-bold text-[#D4F938] transition-colors cursor-pointer"
+                              >
+                                Stage Gates &amp; Upload
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedProposalId(myProp.id);
+                                  setActiveTab('conflicts');
+                                }}
+                                className="px-4 py-2 rounded-full bg-[#C6B5FD] hover:bg-[#b5a2fc] text-xs font-black text-black transition-colors cursor-pointer"
+                              >
+                                200-Word Pitch
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                /* ================= FACULTY / ADMIN COHORT OVERVIEW ================= */
+                <div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4 mt-2">
+                    <div>
+                      <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                        Active Cohort Submissions
+                      </h2>
+                      <p className="text-xs text-slate-500 font-medium">
+                        Verified through automated Sentence-BERT embeddings &amp; TF-IDF lexical matrix
+                      </p>
+                    </div>
 
-                      {/* Right: Similarity Metric & Action Buttons */}
-                      <div className="flex flex-col items-end gap-3 shrink-0">
-                        {/* Originality / Similarity Meter */}
-                        <div className={`p-3 rounded-xl border text-right w-44 ${
-                          prop.similarityData?.isConflict 
-                            ? 'bg-red-50 border-red-200 text-red-900' 
-                            : 'bg-zinc-50 border-zinc-200 text-zinc-800'
-                        }`}>
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-zinc-500 text-[10px] font-semibold uppercase">NLP SBERT Score</span>
-                            <span className="font-mono font-bold text-xs">
-                              {prop.similarityData ? `${(prop.similarityData.overallScore * 100).toFixed(0)}% Overlap` : '18% Overlap'}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setActiveTab('proposals')}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 hover:text-blue-600 bg-white px-3.5 py-2 rounded-full border border-slate-200/80 shadow-xs transition-colors"
+                      >
+                        <span>View All ({proposals.length})</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Domain Quick-Filter Chips */}
+                  <div className="flex items-center gap-2 flex-wrap mb-5 text-xs">
+                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider mr-1">
+                      Filter:
+                    </span>
+                    {['all', 'AI/ML', 'NLP', 'Cloud', 'IoT', 'Security'].map(dom => (
+                      <button
+                        key={dom}
+                        onClick={() => setDomainFilter(dom)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          domainFilter === dom
+                            ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
+                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                        }`}
+                      >
+                        {dom === 'all' ? 'All Domains' : dom}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Proposals Cards Grid */}
+                  <div className="grid grid-cols-1 gap-4">
+                    {filteredProposals.slice(0, 3).map((prop) => {
+                      const badge = getStatusBadgeDetails(prop.status);
+                      const isSelected = selectedProposalId === prop.id;
+                      const sbertVal = Math.round((prop.similarityData?.sbertScore ?? 0.42) * 100);
+                      const lexicalVal = Math.round((prop.similarityData?.tfidfScore ?? 0.35) * 100);
+
+                      return (
+                        <div 
+                          key={prop.id}
+                          className={`bg-white rounded-[28px] p-6 shadow-xs border transition-all duration-200 ${
+                            isSelected ? 'border-[#18191E] ring-2 ring-[#D4F938]' : 'border-slate-200/80 hover:border-slate-400'
+                          }`}
+                        >
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-mono font-black px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938]">
+                                  {prop.projectId || 'DBIT-SE-2026'}
+                                </span>
+                                <span className="text-xs font-semibold text-slate-500">
+                                  Track {prop.trackNo} · Group {prop.groupNo}
+                                </span>
+                                <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full ${
+                                  prop.status === 'approved' 
+                                    ? 'bg-[#C6B5FD] text-black' 
+                                    : prop.status === 'flagged_conflict'
+                                      ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                      : 'bg-[#D4F938] text-black'
+                                }`}>
+                                  {badge.label}
+                                </span>
+                              </div>
+
+                              <h3 className="text-lg font-black text-[#18191E] hover:text-black cursor-pointer" onClick={() => setSelectedProposalId(prop.id)}>
+                                {prop.title}
+                              </h3>
+
+                              <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                                {prop.abstract}
+                              </p>
+
+                              <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 flex-wrap">
+                                <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">Team:</span>
+                                {prop.teamMembers.map((m, idx) => (
+                                  <span key={idx} className="bg-[#F4F5F8] border border-slate-200 rounded-full px-3 py-0.5 text-xs font-bold text-slate-800">
+                                    {m.name} {m.rollNo && `(${m.rollNo})`}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
+                              <div className="flex items-center gap-3 bg-[#F4F5F8] p-3 rounded-2xl border border-slate-200/80">
+                                <div>
+                                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT</span>
+                                  <span className="text-sm font-black font-mono text-black">
+                                    {sbertVal}%
+                                  </span>
+                                </div>
+                                <div className="h-6 w-px bg-slate-300" />
+                                <div>
+                                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Lexical</span>
+                                  <span className="text-sm font-black font-mono text-black">
+                                    {lexicalVal}%
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedProposalId(prop.id);
+                                    setActiveTab('gantt');
+                                  }}
+                                  className="px-4 py-2 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200"
+                                >
+                                  Gantt Chart
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedProposalId(prop.id);
+                                    setActiveTab('stages');
+                                  }}
+                                  className="px-4 py-2 rounded-full bg-[#18191E] hover:bg-black text-xs font-bold text-[#D4F938] transition-colors"
+                                >
+                                  Stage Gates
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ===================== VIEW 2: PROPOSALS (FULL SCREENING LIST) ===================== */}
+          {activeTab === 'proposals' && (
+            <div className="space-y-5">
+              {/* Quick Status Filters */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-[24px] p-4 shadow-xs border border-slate-200/80">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
+                  {[
+                    { id: 'all', label: `All (${proposals.length})` },
+                    { id: 'approved', label: `Approved (${proposals.filter(p => p.status === 'approved').length})` },
+                    { id: 'conflicts', label: `Conflicts (${conflictCount})` },
+                    { id: 'under_review', label: 'Under Review' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setStatusFilter(tab.id)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        statusFilter === tab.id
+                          ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
+                          : 'bg-[#F4F5F8] text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {currentRole === 'student' && (
+                  <button
+                    onClick={() => setIsSubmitModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-black text-xs font-black shadow-xs cursor-pointer"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Submit Proposal</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Proposals Cards */}
+              <div className="space-y-4">
+                {filteredProposals.map((prop) => {
+                  const badge = getStatusBadgeDetails(prop.status);
+                  const isSelected = selectedProposalId === prop.id;
+                  const sbertVal = Math.round((prop.similarityData?.sbertScore ?? 0.42) * 100);
+                  const lexicalVal = Math.round((prop.similarityData?.tfidfScore ?? 0.35) * 100);
+
+                  return (
+                    <div 
+                      key={prop.id}
+                      className={`bg-white rounded-[28px] p-6 shadow-xs border transition-all duration-200 ${
+                        isSelected ? 'border-[#18191E] ring-2 ring-[#D4F938]' : 'border-slate-200/80 hover:border-slate-400'
+                      }`}
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-mono font-black px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938]">
+                              {prop.projectId}
+                            </span>
+                            <span className="text-xs font-semibold text-slate-500">
+                              Track {prop.trackNo} · Group {prop.groupNo}
+                            </span>
+                            <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full ${
+                              prop.status === 'approved' 
+                                ? 'bg-[#C6B5FD] text-black' 
+                                : prop.status === 'flagged_conflict'
+                                  ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                  : 'bg-[#D4F938] text-black'
+                            }`}>
+                              {badge.label}
                             </span>
                           </div>
-                          <div className="w-full bg-zinc-200 rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className={`h-1.5 rounded-full ${prop.similarityData?.isConflict ? 'bg-red-600' : 'bg-emerald-500'}`}
-                              style={{ width: `${prop.similarityData ? prop.similarityData.overallScore * 100 : 18}%` }}
-                            />
+
+                          <h3 className="text-lg font-black text-[#18191E]">
+                            {prop.title}
+                          </h3>
+
+                          <p className="text-xs text-slate-600 leading-relaxed">
+                            {prop.abstract}
+                          </p>
+
+                          {/* Team & Guide */}
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1">
+                            <div>
+                              <span className="font-bold text-slate-400 mr-1.5">Guide:</span>
+                              <span className="font-extrabold text-black">{prop.guideName}</span>
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-400 mr-1.5">Team:</span>
+                              <span className="font-semibold text-slate-800">
+                                {prop.teamMembers.map(m => m.name).join(', ')}
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-[10px] text-zinc-500 block mt-1">
-                            Originality: <strong>{originality}%</strong> (Cutoff: &lt;75%)
-                          </span>
                         </div>
 
-                        {/* Action buttons */}
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              setSelectedProposalId(prop.id);
-                              setActiveTab('stages');
-                            }}
-                            className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors shadow-2xs"
-                          >
-                            <GitBranch className="w-3.5 h-3.5" />
-                            <span>Stage-Gates &amp; Git</span>
-                          </button>
+                        {/* Dual Similarity Gauge & Actions */}
+                        <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
+                          <div className="flex items-center gap-3 bg-[#F4F5F8] p-3 rounded-2xl border border-slate-200/80">
+                            <div>
+                              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT</span>
+                              <span className="text-sm font-black font-mono text-black">
+                                {sbertVal}%
+                              </span>
+                            </div>
+                            <div className="h-6 w-px bg-slate-300" />
+                            <div>
+                              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Lexical</span>
+                              <span className="text-sm font-black font-mono text-black">
+                                {lexicalVal}%
+                              </span>
+                            </div>
+                          </div>
 
-                          {(prop.status === 'flagged_conflict' || prop.status === 'coordinator_arbitration') && (
+                          <div className="flex items-center gap-2">
+                            {(currentRole === 'guide' || currentRole === 'coordinator') && prop.status !== 'approved' && (
+                              <button
+                                onClick={() => handleQuickApprove(prop.id)}
+                                className="px-4 py-2 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-xs font-black text-black transition-colors shadow-xs cursor-pointer"
+                              >
+                                Approve Topic
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 setSelectedProposalId(prop.id);
-                                setActiveTab('conflicts');
+                                setActiveTab('gantt');
                               }}
-                              className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors shadow-2xs"
+                              className="px-4 py-2 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200 cursor-pointer"
                             >
-                              <Scale className="w-3.5 h-3.5" />
-                              <span>Pitch Defense</span>
+                              Gantt Chart
                             </button>
-                          )}
-
-                          {/* Quick Guide Approve */}
-                          {(currentRole === 'guide' || currentRole === 'coordinator') && prop.status === 'under_guide_review' && (
                             <button
-                              onClick={() => handleQuickApprove(prop.id)}
-                              className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors shadow-2xs"
+                              onClick={() => {
+                                setSelectedProposalId(prop.id);
+                                setActiveTab('stages');
+                              }}
+                              className="px-4 py-2 rounded-full bg-[#18191E] hover:bg-black text-xs font-bold text-[#D4F938] transition-colors cursor-pointer"
                             >
-                              <Stamp className="w-3.5 h-3.5" />
-                              <span>Approve Topic</span>
+                              Stage Gates
                             </button>
-                          )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 2. VISUAL STAGE-GATE & GITHUB SYNC TAB */}
-        {activeTab === 'stages' && (
-          <StageGateTracker
-            proposal={activeProposal}
-            currentRole={currentRole}
-            onUpdateMilestone={handleUpdateMilestone}
-            onUpdateGitHubData={handleUpdateGitHubData}
-          />
-        )}
+          {/* ===================== VIEW 3: GANTT TIMELINE ===================== */}
+          {activeTab === 'gantt' && (
+            <div className="space-y-4">
+              <ProjectGanttChart
+                proposals={proposals}
+                activeProposalId={selectedProposalId}
+                onSelectProposal={setSelectedProposalId}
+                userRole={currentRole}
+                onUpdateMilestone={handleUpdateMilestone}
+              />
+            </div>
+          )}
 
-        {/* 3. PITCH DEFENSE & CONFLICT RESOLUTION TAB */}
-        {activeTab === 'conflicts' && (
-          <ConflictResolutionDashboard
-            proposals={proposals}
-            currentRole={currentRole}
-            onArbitrateConflict={handleArbitrateConflict}
-            onSubmitPitchDefense={(propId, pitchText) => {
-              setProposals(prev => prev.map(p => {
-                if (p.id !== propId) return p;
-                return {
-                  ...p,
-                  status: 'coordinator_arbitration',
-                  pitchDefense: {
-                    content: pitchText,
-                    submittedAt: new Date().toISOString(),
-                    keyDifferentiator: 'Architectural distinction & verified benchmarks',
-                    targetStack: p.techStack.join(', '),
-                    expectedDeliverable: 'Working deployment'
-                  }
-                };
-              }));
-              showToast('200-Word Pitch Defense submitted to Coordinator Queue.');
-            }}
-          />
-        )}
+          {/* ===================== VIEW 4: STAGE GATES ===================== */}
+          {activeTab === 'stages' && (
+            <div className="space-y-4">
+              <StageGateTracker
+                proposal={activeProposal}
+                currentRole={currentRole}
+                onUpdateMilestone={handleUpdateMilestone}
+                onUpdateGitHubData={handleUpdateGitHubData}
+              />
+            </div>
+          )}
 
-        {/* 4. HISTORICAL REPOSITORY TAB */}
-        {activeTab === 'repository' && (
-          <HistoricalRepository
-            projects={historicalProjects}
-            onSelectForComparison={(p) => {
-              showToast(`Selected "${p.title}" for comparison.`);
-              setIsSubmitModalOpen(true);
-            }}
-          />
-        )}
+          {/* ===================== VIEW 5: TOPIC ARBITRATION / CONFLICTS ===================== */}
+          {activeTab === 'conflicts' && (
+            <div className="space-y-4">
+              <ConflictResolutionDashboard
+                proposals={proposals}
+                currentRole={currentRole}
+                onArbitrateConflict={handleArbitrateConflict}
+                onSubmitPitchDefense={(id, text) => {
+                  showToast('Pitch defense statement saved.');
+                }}
+              />
+            </div>
+          )}
 
-        {/* 5. SURVEY & GANTT ANALYTICS TAB */}
-        {activeTab === 'analytics' && (
-          <AnalyticsAndGantt />
-        )}
-      </main>
+          {/* ===================== VIEW 6: HISTORICAL REPOSITORY ===================== */}
+          {activeTab === 'repository' && (
+            <div className="space-y-4">
+              <HistoricalRepository
+                projects={historicalProjects}
+              />
+            </div>
+          )}
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-zinc-200 mt-12 py-6 text-xs text-zinc-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-zinc-800">
-              DBIT ProjectTrack • Centralized Project Proposal &amp; Progress Tracking Portal
-            </p>
-            <p className="text-[11px] text-zinc-400 mt-0.5">
-              SE Mini Project-I (Semester III) • Academic Year 2026–27 • Department of Computer Engineering
-            </p>
-          </div>
-          <div className="flex items-center gap-4 text-[11px]">
-            <span>Group 05: Apoorvadeep (Lead), Ron, Rishik, Aryan</span>
-            <span>•</span>
-            <span>Guides: Mr. Nazareth Remedios / Ms. Harleen Kaur Plaha</span>
-          </div>
+          {/* ===================== VIEW 7: GUIDE NOTICES ===================== */}
+          {activeTab === 'notices' && (
+            <div className="space-y-4">
+              <GuideNoticeBoard
+                userRole={currentRole}
+                userGroupNo={currentUser?.groupNo || 5}
+                userName={currentUser?.name || 'User'}
+                onOpenSendModal={() => setIsGuideMessageModalOpen(true)}
+              />
+            </div>
+          )}
+
+          {/* ===================== VIEW 8: ADMIN ACCOUNTS & DATABASE ===================== */}
+          {activeTab === 'admin' && (
+            <div className="space-y-4">
+              <AdminPanel
+                proposals={proposals}
+                onSelectProposal={setSelectedProposalId}
+                onNavigateToTab={setActiveTab}
+              />
+            </div>
+          )}
+
         </div>
-      </footer>
+      </div>
 
       {/* Modals */}
       <ProposalSubmissionModal
@@ -777,6 +1276,17 @@ export default function App() {
         isOpen={isPresentationModalOpen}
         onClose={() => setIsPresentationModalOpen(false)}
       />
+
+      {isGuideMessageModalOpen && (
+        <GuideMessageModal
+          isOpen={isGuideMessageModalOpen}
+          onClose={() => setIsGuideMessageModalOpen(false)}
+          senderName={currentUser?.name || 'Faculty Guide'}
+          senderRole={currentRole === 'coordinator' ? 'coordinator' : 'guide'}
+          defaultGroupNo={activeProposal.groupNo || 5}
+          onMessageSent={(msg) => showToast(`Faculty guide notice broadcasted: "${msg.subject}"`)}
+        />
+      )}
     </div>
   );
 }

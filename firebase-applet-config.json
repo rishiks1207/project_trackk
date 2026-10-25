@@ -3,6 +3,7 @@
   "appId": "1:645267843067:web:0b6c191cdd0a0f649b8d5e",
   "apiKey": "AIzaSyB9q_Nxh6ICdU96Do1ai8_48JRaFOGIz3g",
   "authDomain": "parabolic-cache-nw2pc.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-dbitprojecttrack-21f0185b-8e2f-48d4-8c61-aa6501cd07b0",
   "storageBucket": "parabolic-cache-nw2pc.firebasestorage.app",
   "messagingSenderId": "645267843067",
   "measurementId": "",
