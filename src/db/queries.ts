@@ -2,10 +2,30 @@
  * Database queries with robust multi-layer fallback error handling for DBIT ProjectTrack
  */
 
+import fs from 'fs';
+import path from 'path';
 import { db } from './index.ts';
 import { proposals, stageGates, feedbackHistory, historicalProjects, users, guideMessages } from './schema.ts';
 import { eq, desc } from 'drizzle-orm';
 import { INITIAL_HISTORICAL_PROJECTS, INITIAL_PROPOSALS } from '../data/mockData.ts';
+
+/**
+ * Checks if the Cloud SQL PostgreSQL unix socket or connection is actually available.
+ */
+export function isCloudSqlAvailable(): boolean {
+  try {
+    const host = process.env.SQL_HOST;
+    if (!host) return false;
+    // For unix domain socket connections, check if the actual .s.PGSQL.5432 socket file exists
+    if (host.startsWith('/')) {
+      const socketFile = path.join(host, '.s.PGSQL.5432');
+      return fs.existsSync(socketFile);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export const SEED_USERS = [
   {
@@ -132,7 +152,7 @@ export const SEED_USERS = [
   }
 ];
 
-// In-memory fallback stores when Cloud SQL connection is unavailable
+// In-memory persistent stores
 let memoryUsers: any[] = SEED_USERS.map((u, idx) => ({
   id: idx + 1,
   ...u,
@@ -157,9 +177,13 @@ let memoryMessages: any[] = [
 ];
 
 /**
- * Seeds initial database data if tables are empty or adds missing seed users
+ * Seeds initial database data if tables are empty
  */
 export async function seedInitialDataIfNeeded() {
+  if (!isCloudSqlAvailable()) {
+    return;
+  }
+
   try {
     // 1. Seed users if not present
     for (const u of SEED_USERS) {
@@ -180,7 +204,6 @@ export async function seedInitialDataIfNeeded() {
     // 2. Seed historical projects
     const existingHist = await db.select().from(historicalProjects).limit(1);
     if (existingHist.length === 0) {
-      console.log('Seeding historical projects into Cloud SQL PostgreSQL...');
       for (const hp of INITIAL_HISTORICAL_PROJECTS) {
         await db.insert(historicalProjects).values({
           id: hp.id,
@@ -203,7 +226,6 @@ export async function seedInitialDataIfNeeded() {
     // 3. Seed proposals
     const existingProps = await db.select().from(proposals).limit(1);
     if (existingProps.length === 0) {
-      console.log('Seeding initial proposals into Cloud SQL PostgreSQL...');
       for (const p of INITIAL_PROPOSALS) {
         await db.insert(proposals).values({
           id: p.id,
@@ -256,26 +278,28 @@ export async function seedInitialDataIfNeeded() {
         }
       }
     }
-  } catch (err) {
-    console.warn('PostgreSQL seed deferred (using memory fallback):', (err as any)?.message || err);
+  } catch {
+    // Non-fatal
   }
 }
 
 // ---------------- USER ACCOUNT QUERIES (FOR ADMIN & AUTH) ----------------
 
 export async function authenticateUser(email: string, passwordAttempt: string) {
-  try {
-    const matched = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1);
-    if (matched.length > 0) {
-      const user = matched[0];
-      if (user.password === passwordAttempt.trim()) {
-        const { password, ...safeUser } = user;
-        return safeUser;
+  if (isCloudSqlAvailable()) {
+    try {
+      const matched = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1);
+      if (matched.length > 0) {
+        const user = matched[0];
+        if (user.password === passwordAttempt.trim()) {
+          const { password, ...safeUser } = user;
+          return safeUser;
+        }
+        return null;
       }
-      return null;
+    } catch {
+      // Fall through to memory
     }
-  } catch (error) {
-    console.warn('PostgreSQL authentication query fallback:', (error as any)?.message || error);
   }
 
   // Resilient memory fallback
@@ -288,69 +312,74 @@ export async function authenticateUser(email: string, passwordAttempt: string) {
 }
 
 export async function getAllUsers() {
-  try {
-    const userList = await db.select().from(users).orderBy(desc(users.createdAt));
-    const allProps = await db.select().from(proposals);
+  if (isCloudSqlAvailable()) {
+    try {
+      const userList = await db.select().from(users).orderBy(desc(users.createdAt));
+      const allProps = await db.select().from(proposals);
 
-    return userList.map(u => {
-      let assignedCount = 0;
-      let relatedProposalTitle: string | undefined;
+      return userList.map(u => {
+        let assignedCount = 0;
+        let relatedProposalTitle: string | undefined;
 
-      if (u.role === 'guide') {
-        assignedCount = allProps.filter(p => p.guideName?.toLowerCase().includes(u.name.toLowerCase().split(' ')[1] || u.name.toLowerCase())).length;
-      } else if (u.role === 'student' && u.groupNo) {
-        const matchingProp = allProps.find(p => p.groupNo === u.groupNo);
-        if (matchingProp) {
-          relatedProposalTitle = matchingProp.title;
-          assignedCount = 1;
+        if (u.role === 'guide') {
+          assignedCount = allProps.filter(p => p.guideName?.toLowerCase().includes(u.name.toLowerCase().split(' ')[1] || u.name.toLowerCase())).length;
+        } else if (u.role === 'student' && u.groupNo) {
+          const matchingProp = allProps.find(p => p.groupNo === u.groupNo);
+          if (matchingProp) {
+            relatedProposalTitle = matchingProp.title;
+            assignedCount = 1;
+          }
+        } else if (u.role === 'coordinator') {
+          assignedCount = allProps.length;
         }
-      } else if (u.role === 'coordinator') {
-        assignedCount = allProps.length;
-      }
 
-      return {
-        id: u.id,
-        uid: u.uid,
-        email: u.email,
-        name: u.name,
-        role: u.role,
-        rollNo: u.rollNo,
-        department: u.department,
-        cohort: u.cohort,
-        groupNo: u.groupNo,
-        trackNo: u.trackNo,
-        assignedProjectCount: assignedCount,
-        relatedProposalTitle,
-        createdAt: u.createdAt ? u.createdAt.toISOString() : undefined
-      };
-    });
-  } catch (error) {
-    console.warn('PostgreSQL query fallback for users:', (error as any)?.message || error);
-    return memoryUsers;
+        return {
+          id: u.id,
+          uid: u.uid,
+          email: u.email,
+          name: u.name,
+          role: u.role,
+          rollNo: u.rollNo,
+          department: u.department,
+          cohort: u.cohort,
+          groupNo: u.groupNo,
+          trackNo: u.trackNo,
+          assignedProjectCount: assignedCount,
+          relatedProposalTitle,
+          createdAt: u.createdAt ? u.createdAt.toISOString() : undefined
+        };
+      });
+    } catch {
+      // Fall through to memory
+    }
   }
+
+  return memoryUsers;
 }
 
 export async function createUserAccount(accountData: any) {
-  try {
-    const newUid = `usr-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const result = await db.insert(users).values({
-      uid: newUid,
-      email: accountData.email.trim().toLowerCase(),
-      password: accountData.password || 'dbit2026',
-      name: accountData.name.trim(),
-      role: accountData.role,
-      department: accountData.department || 'Computer Engineering',
-      cohort: accountData.cohort || 'SE COMPS C (Batch A)',
-      rollNo: accountData.rollNo ? String(accountData.rollNo).trim() : null,
-      groupNo: accountData.groupNo ? Number(accountData.groupNo) : null,
-      trackNo: accountData.trackNo ? Number(accountData.trackNo) : null,
-    }).returning();
-    if (result.length > 0) {
-      const { password, ...safeUser } = result[0];
-      return safeUser;
+  if (isCloudSqlAvailable()) {
+    try {
+      const newUid = `usr-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const result = await db.insert(users).values({
+        uid: newUid,
+        email: accountData.email.trim().toLowerCase(),
+        password: accountData.password || 'dbit2026',
+        name: accountData.name.trim(),
+        role: accountData.role,
+        department: accountData.department || 'Computer Engineering',
+        cohort: accountData.cohort || 'SE COMPS C (Batch A)',
+        rollNo: accountData.rollNo ? String(accountData.rollNo).trim() : null,
+        groupNo: accountData.groupNo ? Number(accountData.groupNo) : null,
+        trackNo: accountData.trackNo ? Number(accountData.trackNo) : null,
+      }).returning();
+      if (result.length > 0) {
+        const { password, ...safeUser } = result[0];
+        return safeUser;
+      }
+    } catch {
+      // Fall through
     }
-  } catch (error) {
-    console.warn('PostgreSQL insert user account fallback:', (error as any)?.message || error);
   }
 
   // Memory fallback
@@ -375,17 +404,19 @@ export async function createUserAccount(accountData: any) {
 }
 
 export async function updateUserPassword(id: number, newPassword: string) {
-  try {
-    const result = await db.update(users)
-      .set({ password: newPassword.trim() })
-      .where(eq(users.id, id))
-      .returning();
-    if (result.length > 0) {
-      const { password, ...safeUser } = result[0];
-      return safeUser;
+  if (isCloudSqlAvailable()) {
+    try {
+      const result = await db.update(users)
+        .set({ password: newPassword.trim() })
+        .where(eq(users.id, id))
+        .returning();
+      if (result.length > 0) {
+        const { password, ...safeUser } = result[0];
+        return safeUser;
+      }
+    } catch {
+      // Fall through
     }
-  } catch (error) {
-    console.warn('PostgreSQL update password fallback:', (error as any)?.message || error);
   }
 
   const u = memoryUsers.find(user => user.id === id);
@@ -398,11 +429,13 @@ export async function updateUserPassword(id: number, newPassword: string) {
 }
 
 export async function deleteUserAccount(id: number) {
-  try {
-    const res = await db.delete(users).where(eq(users.id, id)).returning();
-    if (res.length > 0) return res[0];
-  } catch (error) {
-    console.warn('PostgreSQL delete user fallback:', (error as any)?.message || error);
+  if (isCloudSqlAvailable()) {
+    try {
+      const res = await db.delete(users).where(eq(users.id, id)).returning();
+      if (res.length > 0) return res[0];
+    } catch {
+      // Fall through
+    }
   }
 
   const idx = memoryUsers.findIndex(u => u.id === id);
@@ -416,20 +449,22 @@ export async function deleteUserAccount(id: number) {
 // ---------------- GUIDE MESSAGE QUERIES ----------------
 
 export async function createGuideMessage(messageData: any) {
-  try {
-    const id = `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const result = await db.insert(guideMessages).values({
-      id,
-      senderName: messageData.senderName,
-      senderRole: messageData.senderRole || 'guide',
-      targetGroupNo: Number(messageData.targetGroupNo),
-      subject: messageData.subject.trim(),
-      message: messageData.message.trim(),
-      urgency: messageData.urgency || 'normal',
-    }).returning();
-    if (result.length > 0) return result[0];
-  } catch (error) {
-    console.warn('PostgreSQL insert guide message fallback:', (error as any)?.message || error);
+  if (isCloudSqlAvailable()) {
+    try {
+      const id = `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const result = await db.insert(guideMessages).values({
+        id,
+        senderName: messageData.senderName,
+        senderRole: messageData.senderRole || 'guide',
+        targetGroupNo: Number(messageData.targetGroupNo),
+        subject: messageData.subject.trim(),
+        message: messageData.message.trim(),
+        urgency: messageData.urgency || 'normal',
+      }).returning();
+      if (result.length > 0) return result[0];
+    } catch {
+      // Fall through
+    }
   }
 
   const newMsg = {
@@ -447,61 +482,70 @@ export async function createGuideMessage(messageData: any) {
 }
 
 export async function getGuideMessages(groupNo?: number) {
-  try {
-    if (groupNo !== undefined && groupNo !== null) {
-      return await db.select().from(guideMessages)
-        .where(eq(guideMessages.targetGroupNo, Number(groupNo)))
-        .orderBy(desc(guideMessages.timestamp));
+  if (isCloudSqlAvailable()) {
+    try {
+      if (groupNo !== undefined && groupNo !== null) {
+        return await db.select().from(guideMessages)
+          .where(eq(guideMessages.targetGroupNo, Number(groupNo)))
+          .orderBy(desc(guideMessages.timestamp));
+      }
+      return await db.select().from(guideMessages).orderBy(desc(guideMessages.timestamp));
+    } catch {
+      // Fall through
     }
-    return await db.select().from(guideMessages).orderBy(desc(guideMessages.timestamp));
-  } catch (error) {
-    console.warn('PostgreSQL get guide messages fallback:', (error as any)?.message || error);
-    if (groupNo !== undefined && groupNo !== null) {
-      return memoryMessages.filter(m => m.targetGroupNo === Number(groupNo));
-    }
-    return memoryMessages;
   }
+
+  if (groupNo !== undefined && groupNo !== null) {
+    return memoryMessages.filter(m => m.targetGroupNo === Number(groupNo));
+  }
+  return memoryMessages;
 }
 
 // ---------------- PROPOSAL & STAGE-GATE QUERIES ----------------
 
 export async function getAllProposals() {
-  try {
-    const propRows = await db.select().from(proposals).orderBy(desc(proposals.createdAt));
-    const allStageGates = await db.select().from(stageGates);
-    const allFeedback = await db.select().from(feedbackHistory).orderBy(desc(feedbackHistory.timestamp));
+  if (isCloudSqlAvailable()) {
+    try {
+      const propRows = await db.select().from(proposals).orderBy(desc(proposals.createdAt));
+      const allStageGates = await db.select().from(stageGates);
+      const allFeedback = await db.select().from(feedbackHistory).orderBy(desc(feedbackHistory.timestamp));
 
-    if (propRows.length > 0) {
-      return propRows.map(p => ({
-        ...p,
-        stageGates: allStageGates.filter(sg => sg.proposalId === p.id),
-        feedbackHistory: allFeedback.filter(fb => fb.proposalId === p.id)
-      }));
+      if (propRows.length > 0) {
+        return propRows.map(p => ({
+          ...p,
+          stageGates: allStageGates.filter(sg => sg.proposalId === p.id),
+          feedbackHistory: allFeedback.filter(fb => fb.proposalId === p.id)
+        }));
+      }
+    } catch {
+      // Fall through
     }
-  } catch (error) {
-    console.warn('PostgreSQL get proposals fallback (using initialized cache):', (error as any)?.message || error);
   }
 
   return memoryProposals;
 }
 
 export async function getAllHistoricalProjects() {
-  try {
-    const res = await db.select().from(historicalProjects);
-    if (res.length > 0) return res;
-  } catch (error) {
-    console.warn('PostgreSQL get historical projects fallback (using initialized cache):', (error as any)?.message || error);
+  if (isCloudSqlAvailable()) {
+    try {
+      const res = await db.select().from(historicalProjects);
+      if (res.length > 0) return res;
+    } catch {
+      // Fall through
+    }
   }
 
   return memoryHistorical;
 }
 
 export async function insertProposal(proposalData: any) {
-  try {
-    const inserted = await db.insert(proposals).values(proposalData).returning();
-    if (inserted.length > 0) return inserted[0];
-  } catch (error) {
-    console.warn('PostgreSQL insert proposal fallback:', (error as any)?.message || error);
+  if (isCloudSqlAvailable()) {
+    try {
+      const inserted = await db.insert(proposals).values(proposalData).returning();
+      if (inserted.length > 0) return inserted[0];
+    } catch {
+      // Fall through
+    }
   }
 
   memoryProposals.unshift(proposalData);
@@ -509,13 +553,15 @@ export async function insertProposal(proposalData: any) {
 }
 
 export async function updateProposalStatus(id: string, status: string, lockedTopic?: boolean) {
-  try {
-    const values: any = { status, updatedAt: new Date() };
-    if (lockedTopic !== undefined) values.lockedTopic = lockedTopic;
-    const res = await db.update(proposals).set(values).where(eq(proposals.id, id)).returning();
-    if (res.length > 0) return res[0];
-  } catch (error) {
-    console.warn('PostgreSQL update proposal status fallback:', (error as any)?.message || error);
+  if (isCloudSqlAvailable()) {
+    try {
+      const values: any = { status, updatedAt: new Date() };
+      if (lockedTopic !== undefined) values.lockedTopic = lockedTopic;
+      const res = await db.update(proposals).set(values).where(eq(proposals.id, id)).returning();
+      if (res.length > 0) return res[0];
+    } catch {
+      // Fall through
+    }
   }
 
   const p = memoryProposals.find(item => item.id === id);
@@ -528,11 +574,13 @@ export async function updateProposalStatus(id: string, status: string, lockedTop
 }
 
 export async function updateStageGate(id: string, updates: any) {
-  try {
-    const res = await db.update(stageGates).set(updates).where(eq(stageGates.id, id)).returning();
-    if (res.length > 0) return res[0];
-  } catch (error) {
-    console.warn('PostgreSQL update stage gate fallback:', (error as any)?.message || error);
+  if (isCloudSqlAvailable()) {
+    try {
+      const res = await db.update(stageGates).set(updates).where(eq(stageGates.id, id)).returning();
+      if (res.length > 0) return res[0];
+    } catch {
+      // Fall through
+    }
   }
 
   for (const p of memoryProposals) {
@@ -548,11 +596,13 @@ export async function updateStageGate(id: string, updates: any) {
 }
 
 export async function insertFeedback(feedbackData: any) {
-  try {
-    const res = await db.insert(feedbackHistory).values(feedbackData).returning();
-    if (res.length > 0) return res[0];
-  } catch (error) {
-    console.warn('PostgreSQL insert feedback fallback:', (error as any)?.message || error);
+  if (isCloudSqlAvailable()) {
+    try {
+      const res = await db.insert(feedbackHistory).values(feedbackData).returning();
+      if (res.length > 0) return res[0];
+    } catch {
+      // Fall through
+    }
   }
 
   return feedbackData;

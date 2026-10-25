@@ -38,9 +38,12 @@ export const GuideNoticeBoard: React.FC<GuideNoticeBoardProps> = ({
         url += `?groupNo=${userGroupNo}`;
       }
       const res = await fetch(url);
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        setMessages(data);
+        if (Array.isArray(data)) {
+          setMessages(data);
+        }
       }
     } catch (err) {
       console.warn('Failed to load guide notices:', err);
