@@ -403,6 +403,41 @@ export async function createUserAccount(accountData: any) {
   return safeUser;
 }
 
+export async function updateUserDetails(id: number, updates: any) {
+  const safeUpdates: any = {};
+  if (updates.name) safeUpdates.name = updates.name.trim();
+  if (updates.email) safeUpdates.email = updates.email.trim().toLowerCase();
+  if (updates.role) safeUpdates.role = updates.role;
+  if (updates.department !== undefined) safeUpdates.department = updates.department;
+  if (updates.cohort !== undefined) safeUpdates.cohort = updates.cohort;
+  if (updates.rollNo !== undefined) safeUpdates.rollNo = updates.rollNo ? String(updates.rollNo).trim() : null;
+  if (updates.groupNo !== undefined) safeUpdates.groupNo = updates.groupNo ? Number(updates.groupNo) : null;
+  if (updates.password) safeUpdates.password = updates.password.trim();
+
+  if (isCloudSqlAvailable()) {
+    try {
+      const result = await db.update(users)
+        .set(safeUpdates)
+        .where(eq(users.id, id))
+        .returning();
+      if (result.length > 0) {
+        const { password, ...safeUser } = result[0];
+        return safeUser;
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  const u = memoryUsers.find(user => user.id === id);
+  if (u) {
+    Object.assign(u, safeUpdates);
+    const { password, ...safeUser } = u;
+    return safeUser;
+  }
+  return { id, ...safeUpdates };
+}
+
 export async function updateUserPassword(id: number, newPassword: string) {
   if (isCloudSqlAvailable()) {
     try {

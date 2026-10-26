@@ -306,13 +306,13 @@ export default function App() {
       techStack: newProp.techStack || ['React', 'Python', 'FastAPI', 'PostgreSQL'],
       teamMembers: defaultTeam,
       guideName: newProp.guideName || 'Mr. Nazareth Remedios',
-      coordinatorName: 'Prof. Meenal Kulkarni',
-      status: 'under_guide_review',
+      coordinatorName: newProp.coordinatorName || 'Prof. Meenal Kulkarni',
+      status: (newProp.similarityData?.isConflict) ? 'flagged_conflict' : 'submitted',
       lockedTopic: false,
-      similarityData: {
-        overallScore: 0.42,
-        sbertScore: 0.42,
-        tfidfScore: 0.38,
+      similarityData: newProp.similarityData || {
+        overallScore: 0.18,
+        sbertScore: 0.20,
+        tfidfScore: 0.15,
         isConflict: false,
         explanation: 'Novel scope within DBIT Computer Engineering archives.'
       },
@@ -323,9 +323,7 @@ export default function App() {
           phase: 'stage1_design',
           weekRange: 'W1–W2',
           dueDate: '2026-07-14',
-          status: 'approved',
-          guideApprovedBy: 'Mr. Nazareth Remedios',
-          guideApprovedDate: '2026-07-12',
+          status: 'in_progress',
           deliverableType: 'architecture_spec'
         },
         {
@@ -334,7 +332,7 @@ export default function App() {
           phase: 'stage1_design',
           weekRange: 'W3–W4',
           dueDate: '2026-07-28',
-          status: 'submitted',
+          status: 'pending',
           deliverableType: 'architecture_spec'
         },
         {
@@ -592,25 +590,34 @@ export default function App() {
   };
 
   const handleQuickApprove = (propId: string) => {
+    let updatedTarget: ProjectProposal | null = null;
     setProposals(prev => prev.map(p => {
       if (p.id !== propId) return p;
-      return {
+      const updatedGates = (p.stageGates || []).map(g => {
+        if (g.id === 'gate-0') return { ...g, status: 'approved' as const, guideApprovedBy: currentUser?.name || p.coordinatorName || 'Coordinator', guideApprovedDate: new Date().toISOString().split('T')[0] };
+        if (g.id === 'gate-1' && (g.status === 'pending' || (g.status as string) === 'locked')) return { ...g, status: 'in_progress' as const };
+        return g;
+      });
+      const updated: ProjectProposal = {
         ...p,
         status: 'approved',
         lockedTopic: true,
+        stageGates: updatedGates,
         feedbackHistory: [
           {
             id: `fb-app-${Date.now()}`,
-            authorName: currentRole === 'coordinator' ? p.coordinatorName : p.guideName,
+            authorName: currentRole === 'coordinator' ? (currentUser?.name || p.coordinatorName) : (currentUser?.name || p.guideName),
             authorRole: currentRole === 'coordinator' ? 'coordinator' : 'guide',
             timestamp: new Date().toISOString(),
             stage: 'Topic Approval',
             status: 'approved',
-            remarks: 'Technical scope and methodology verified. Topic approved for SE Mini Project.'
+            remarks: 'Technical scope and methodology verified. Topic approved by Project Coordinator and assigned to Faculty Guide for mentoring.'
           },
           ...p.feedbackHistory
         ]
       };
+      updatedTarget = updated;
+      return updated;
     }));
 
     fetch(`/api/proposals/${propId}/status`, {
@@ -619,20 +626,47 @@ export default function App() {
       body: JSON.stringify({ status: 'approved', lockedTopic: true })
     }).catch(e => console.warn(e));
 
-    showToast('Topic approved by Faculty Guide! Stage 1 Design unlocked.');
+    if (updatedTarget) {
+      saveProposalToFirestore(updatedTarget);
+    }
+
+    showToast('Topic approved by Coordinator! Allocated to Faculty Guide for Stage 1 mentoring.');
   };
 
   // Filtered proposals list with multi-facet filters
   const filteredProposals = proposals.filter(p => {
-    // 1. Status Filter
+    // 0. Student Visibility Constraint: Students can ONLY see their own proposal if it exists!
+    if (currentRole === 'student') {
+      const isMine = 
+        (currentUser?.groupNo && p.groupNo === currentUser.groupNo && (!currentUser.trackNo || p.trackNo === currentUser.trackNo)) ||
+        (p.teamMembers && p.teamMembers.some(m => 
+          (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+          (currentUser?.name && m.name && m.name.toLowerCase() === currentUser.name.toLowerCase()) ||
+          (currentUser?.rollNo && m.rollNo && m.rollNo === currentUser.rollNo)
+        ));
+      if (!isMine) return false;
+    }
+
+    // 1. Guide Visibility Constraint: Projects assigned to coordinator do NOT reach guide until approved
+    if (currentRole === 'guide') {
+      if (p.status !== 'approved' && p.status !== 'completed') return false;
+      if (currentUser?.name && 
+          !p.guideName.toLowerCase().includes(currentUser.name.toLowerCase()) && 
+          !currentUser.name.toLowerCase().includes(p.guideName.toLowerCase()) &&
+          currentUser.email !== 'guide@dbit.in') {
+        return false;
+      }
+    }
+
+    // 2. Status Filter
     if (statusFilter === 'conflicts' && !(p.status === 'flagged_conflict' || p.status === 'coordinator_arbitration')) return false;
     if (statusFilter === 'approved' && !(p.status === 'approved' || p.status === 'completed')) return false;
     if (statusFilter === 'under_review' && !(p.status === 'under_guide_review' || p.status === 'evaluating_similarity')) return false;
 
-    // 2. Domain Filter
+    // 3. Domain Filter
     if (domainFilter !== 'all' && !p.domain.toLowerCase().includes(domainFilter.toLowerCase())) return false;
 
-    // 3. Search Query
+    // 4. Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = p.title.toLowerCase().includes(q);
@@ -737,14 +771,18 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         currentRole={currentRole}
-        conflictCount={conflictCount}
-        proposalsCount={proposals.length}
+        conflictCount={
+          currentRole === 'student'
+            ? (studentProposal?.status === 'flagged_conflict' || studentProposal?.status === 'coordinator_arbitration' ? 1 : 0)
+            : conflictCount
+        }
+        proposalsCount={currentRole === 'student' ? (studentProposal ? 1 : 0) : proposals.length}
         onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
         onOpenGuideMessageModal={() => setIsGuideMessageModalOpen(true)}
       />
 
       {/* Right Main Porcelain Content Viewport (Straight up edge-to-edge webapp) */}
-      <div className="flex-1 bg-[#F4F5F8] p-5 sm:p-7 lg:p-8 flex flex-col overflow-y-auto min-h-screen">
+      <div className="flex-1 bg-[#F4F5F8] p-4 sm:p-7 lg:p-8 pb-24 md:pb-8 flex flex-col overflow-y-auto min-h-screen">
           
           {/* Top Bar with User Avatar, Pill Search, and Notification Bell */}
           <FluxTopBar
@@ -1612,12 +1650,31 @@ export default function App() {
           {/* ===================== VIEW 5: TOPIC ARBITRATION / CONFLICTS ===================== */}
           {activeTab === 'conflicts' && (
             <div className="space-y-4">
-              <ConflictResolutionDashboard
-                proposals={proposals}
-                currentRole={currentRole}
-                onArbitrateConflict={handleArbitrateConflict}
-                onSubmitPitchDefense={handleSavePitchDefense}
-              />
+              {currentRole === 'student' && !studentProposal ? (
+                <div className="bg-white rounded-[28px] p-8 shadow-xs border border-slate-200/80 text-center max-w-lg mx-auto my-8 space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#18191E] text-[#D4F938] flex items-center justify-center mx-auto shadow-md">
+                    <Scale className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-black text-[#18191E]">No Pitch Defense Active</h3>
+                  <p className="text-xs text-slate-600 leading-relaxed max-w-md mx-auto">
+                    You haven&apos;t submitted a capstone proposal yet. Once registered, your proposal&apos;s SBERT originality screen and 200-word pitch defense will be accessible here.
+                  </p>
+                  <button
+                    onClick={() => setIsSubmitModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-black text-xs font-black shadow-xs cursor-pointer"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Submit Project Proposal</span>
+                  </button>
+                </div>
+              ) : (
+                <ConflictResolutionDashboard
+                  proposals={currentRole === 'student' ? (studentProposal ? [studentProposal] : []) : proposals}
+                  currentRole={currentRole}
+                  onArbitrateConflict={handleArbitrateConflict}
+                  onSubmitPitchDefense={handleSavePitchDefense}
+                />
+              )}
             </div>
           )}
 

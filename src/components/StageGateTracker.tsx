@@ -213,54 +213,169 @@ export const StageGateTracker: React.FC<StageGateTrackerProps> = ({
           </div>
         </div>
 
-        {/* Horizontal 4-Stage Stepper */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10">
-          <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-white">Gate 0: Topic</span>
-              <span className="w-5 h-5 rounded-full bg-[#D4F938] text-black flex items-center justify-center font-bold">
-                ✓
-              </span>
-            </div>
-            <p className="text-[11px] text-white/70 mt-1">Passed NLP SBERT screen</p>
-            <span className="text-[10px] font-mono text-[#D4F938] block mt-1 font-bold">Topic Locked</span>
-          </div>
+        {/* Horizontal 4-Stage Stepper - Dynamically computed from proposal status and gates */}
+        {(() => {
+          const isTopicApproved = proposal.status === 'approved' || gates[0]?.status === 'approved';
+          const isConflict = proposal.status === 'flagged_conflict' || proposal.status === 'coordinator_arbitration';
+          
+          const gate0Done = isTopicApproved;
+          const gate0Active = !gate0Done;
 
-          <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-white">Stage 1: Design</span>
-              <span className="w-5 h-5 rounded-full bg-[#C6B5FD] text-black flex items-center justify-center font-bold">
-                ★
-              </span>
-            </div>
-            <p className="text-[11px] text-white/70 mt-1">Exp 1-4 UML models &amp; Survey</p>
-            <span className="text-[10px] font-mono text-[#C6B5FD] block mt-1 font-bold">Review 1 Passed</span>
-          </div>
+          const stage1Done = gate0Done && gates[1]?.status === 'approved';
+          const stage1Active = gate0Done && !stage1Done;
 
-          <div className="bg-white rounded-2xl p-4 border-2 border-[#D4F938] text-[#18191E] shadow-sm">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-black text-[#18191E]">Stage 2: Dev</span>
-              <span className="w-5 h-5 rounded-full bg-[#D4F938] text-black flex items-center justify-center font-bold text-xs animate-spin">
-                ⚙
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-600 mt-1">Exp 5 SBERT &amp; GitHub Sync</p>
-            <span className="text-[10px] font-mono text-black font-extrabold block mt-1 bg-[#D4F938] px-2 py-0.5 rounded-full w-max">
-              Active Sprint
-            </span>
-          </div>
+          const stage2Done = stage1Done && (gates[2]?.status === 'approved' || gates[3]?.status === 'approved');
+          const stage2Active = stage1Done && !stage2Done;
 
-          <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-white/60">Stage 3: Testing</span>
-              <span className="w-5 h-5 rounded-full border border-white/20 text-white/40 flex items-center justify-center text-xs">
-                3
-              </span>
+          const stage3Done = stage2Done && (gates[5]?.status === 'approved' || gates[6]?.status === 'approved');
+          const stage3Active = stage2Done && !stage3Done;
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10">
+              {/* Gate 0 */}
+              <div className={`rounded-2xl p-4 border transition-all ${
+                gate0Active 
+                  ? 'bg-white rounded-2xl border-2 border-[#D4F938] text-[#18191E] shadow-sm' 
+                  : 'bg-white/5 border-white/10 text-white'
+              }`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className={`font-bold ${gate0Active ? 'text-black font-black' : 'text-white'}`}>Gate 0: Topic</span>
+                  {gate0Done ? (
+                    <span className="w-5 h-5 rounded-full bg-[#D4F938] text-black flex items-center justify-center font-bold text-xs">
+                      ✓
+                    </span>
+                  ) : isConflict ? (
+                    <span className="w-5 h-5 rounded-full bg-amber-400 text-black flex items-center justify-center font-bold text-xs">
+                      !
+                    </span>
+                  ) : (
+                    <span className="w-5 h-5 rounded-full bg-amber-400 text-black flex items-center justify-center font-bold text-xs animate-pulse">
+                      ⏳
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] mt-1 ${gate0Active ? 'text-slate-600' : 'text-white/70'}`}>
+                  {gate0Done 
+                    ? 'Topic Approved & Dispatched' 
+                    : isConflict 
+                      ? 'Topic Conflict Flagged' 
+                      : 'Awaiting Coordinator Approval'}
+                </p>
+                <span className={`text-[10px] font-mono block mt-1 font-bold ${
+                  gate0Done 
+                    ? 'text-[#D4F938]' 
+                    : gate0Active 
+                      ? 'bg-[#D4F938] text-black px-2 py-0.5 rounded-full w-max' 
+                      : 'text-amber-400'
+                }`}>
+                  {gate0Done ? 'Topic Approved' : isConflict ? 'Pitch Defense Needed' : 'Under Review'}
+                </span>
+              </div>
+
+              {/* Stage 1: Design */}
+              <div className={`rounded-2xl p-4 border transition-all ${
+                stage1Active 
+                  ? 'bg-white rounded-2xl border-2 border-[#D4F938] text-[#18191E] shadow-sm' 
+                  : 'bg-white/5 border-white/10 text-white'
+              }`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className={`font-bold ${stage1Active ? 'text-black font-black' : gate0Done ? 'text-white' : 'text-white/40'}`}>
+                    Stage 1: Design
+                  </span>
+                  {stage1Done ? (
+                    <span className="w-5 h-5 rounded-full bg-[#C6B5FD] text-black flex items-center justify-center font-bold text-xs">
+                      ★
+                    </span>
+                  ) : stage1Active ? (
+                    <span className="w-5 h-5 rounded-full bg-[#D4F938] text-black flex items-center justify-center font-bold text-xs animate-spin">
+                      ⚙
+                    </span>
+                  ) : (
+                    <span className="w-5 h-5 rounded-full border border-white/20 text-white/40 flex items-center justify-center text-xs">
+                      🔒
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] mt-1 ${stage1Active ? 'text-slate-600' : gate0Done ? 'text-white/70' : 'text-white/40'}`}>
+                  {stage1Done ? 'Exp 1-4 UML Models Approved' : stage1Active ? 'Exp 1-4 Literature & UML' : 'Locked (Requires Topic Approval)'}
+                </p>
+                <span className={`text-[10px] font-mono block mt-1 font-bold ${
+                  stage1Done ? 'text-[#C6B5FD]' : stage1Active ? 'bg-[#D4F938] text-black px-2 py-0.5 rounded-full w-max' : 'text-white/40'
+                }`}>
+                  {stage1Done ? 'Review 1 Passed' : stage1Active ? 'Active Sprint' : 'Locked'}
+                </span>
+              </div>
+
+              {/* Stage 2: Dev */}
+              <div className={`rounded-2xl p-4 border transition-all ${
+                stage2Active 
+                  ? 'bg-white rounded-2xl border-2 border-[#D4F938] text-[#18191E] shadow-sm' 
+                  : 'bg-white/5 border-white/10 text-white'
+              }`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className={`font-bold ${stage2Active ? 'text-black font-black' : stage1Done ? 'text-white' : 'text-white/40'}`}>
+                    Stage 2: Dev
+                  </span>
+                  {stage2Done ? (
+                    <span className="w-5 h-5 rounded-full bg-[#D4F938] text-black flex items-center justify-center font-bold text-xs">
+                      ✓
+                    </span>
+                  ) : stage2Active ? (
+                    <span className="w-5 h-5 rounded-full bg-[#D4F938] text-black flex items-center justify-center font-bold text-xs animate-spin">
+                      ⚙
+                    </span>
+                  ) : (
+                    <span className="w-5 h-5 rounded-full border border-white/20 text-white/40 flex items-center justify-center text-xs">
+                      🔒
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] mt-1 ${stage2Active ? 'text-slate-600' : stage1Done ? 'text-white/70' : 'text-white/40'}`}>
+                  {stage2Done ? 'Exp 5-6 Implementation Verified' : stage2Active ? 'Exp 5 Core & GitHub Sync' : 'Locked (Requires Stage 1)'}
+                </p>
+                <span className={`text-[10px] font-mono block mt-1 font-bold ${
+                  stage2Done ? 'text-[#D4F938]' : stage2Active ? 'bg-[#D4F938] text-black px-2 py-0.5 rounded-full w-max' : 'text-white/40'
+                }`}>
+                  {stage2Done ? 'Stage 2 Passed' : stage2Active ? 'Active Sprint' : 'Locked'}
+                </span>
+              </div>
+
+              {/* Stage 3: Testing */}
+              <div className={`rounded-2xl p-4 border transition-all ${
+                stage3Active 
+                  ? 'bg-white rounded-2xl border-2 border-[#D4F938] text-[#18191E] shadow-sm' 
+                  : 'bg-white/5 border-white/10 text-white'
+              }`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className={`font-bold ${stage3Active ? 'text-black font-black' : stage2Done ? 'text-white' : 'text-white/40'}`}>
+                    Stage 3: Testing
+                  </span>
+                  {stage3Done ? (
+                    <span className="w-5 h-5 rounded-full bg-[#D4F938] text-black flex items-center justify-center font-bold text-xs">
+                      ★
+                    </span>
+                  ) : stage3Active ? (
+                    <span className="w-5 h-5 rounded-full bg-[#D4F938] text-black flex items-center justify-center font-bold text-xs animate-spin">
+                      ⚙
+                    </span>
+                  ) : (
+                    <span className="w-5 h-5 rounded-full border border-white/20 text-white/40 flex items-center justify-center text-xs">
+                      🔒
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] mt-1 ${stage3Active ? 'text-slate-600' : stage2Done ? 'text-white/70' : 'text-white/40'}`}>
+                  {stage3Done ? 'Exp 7 Integration Complete' : stage3Active ? 'Exp 7 Integration & Review 2' : 'Locked (Requires Stage 2)'}
+                </p>
+                <span className={`text-[10px] font-mono block mt-1 font-bold ${
+                  stage3Done ? 'text-[#D4F938]' : stage3Active ? 'bg-[#D4F938] text-black px-2 py-0.5 rounded-full w-max' : 'text-white/40'
+                }`}>
+                  {stage3Done ? 'Final Clearance' : stage3Active ? 'Active Sprint' : 'Locked'}
+                </span>
+              </div>
             </div>
-            <p className="text-[11px] text-white/50 mt-1">Exp 7 Integration &amp; Review 2</p>
-            <span className="text-[10px] font-mono text-white/40 block mt-1">Due W12–W14</span>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {/* Main Grid: Milestones List + Selected Milestone Inspector */}

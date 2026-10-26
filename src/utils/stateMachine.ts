@@ -132,6 +132,12 @@ export function getStatusBadgeDetails(status: ProposalStatus): {
         badgeClass: 'bg-zinc-100 text-zinc-700 border-zinc-300 dark:bg-zinc-800 dark:text-zinc-300',
         description: 'Proposal is being drafted. Editing active.'
       };
+    case 'submitted':
+      return {
+        label: 'Awaiting Coordinator Approval',
+        badgeClass: 'bg-[#D4F938] text-slate-950 border-[#D4F938]',
+        description: 'Proposal registered. Awaiting topic clearance from Project Coordinator.'
+      };
     case 'evaluating_similarity':
       return {
         label: 'Screening (SBERT)',
@@ -179,6 +185,12 @@ export function getStatusBadgeDetails(status: ProposalStatus): {
         label: 'Completed & Published',
         badgeClass: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300',
         description: 'Final review signed off. Archived in repository.'
+      };
+    default:
+      return {
+        label: 'Under Review',
+        badgeClass: 'bg-slate-100 text-slate-800 border-slate-300',
+        description: 'Proposal under review.'
       };
   }
 }

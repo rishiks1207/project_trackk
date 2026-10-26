@@ -14,6 +14,7 @@ import {
   createUserAccount,
   deleteUserAccount,
   updateUserPassword,
+  updateUserDetails,
   createGuideMessage,
   getGuideMessages,
   authenticateUser
@@ -82,7 +83,21 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// 4. Admin / Self: Update User Password
+// 4. Admin / Self: Update User Details
+app.put('/api/users/:id', async (req, res) => {
+  try {
+    const updated = await updateUserDetails(parseInt(req.params.id), req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    res.json({ message: 'User details updated successfully.', user: updated });
+  } catch (error: any) {
+    console.error('Error updating user details:', error);
+    res.status(500).json({ error: error.message || 'Failed to update user details' });
+  }
+});
+
+// 5. Admin / Self: Update User Password
 app.put('/api/users/:id/password', async (req, res) => {
   try {
     const { password } = req.body;

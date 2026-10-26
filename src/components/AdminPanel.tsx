@@ -22,9 +22,12 @@ import {
   Calendar,
   UserCog,
   Check,
-  GitBranch
+  GitBranch,
+  Edit3,
+  School,
+  Plus
 } from 'lucide-react';
-import { UserAccount, UserRole, ProjectProposal } from '../types';
+import { UserAccount, UserRole, ProjectProposal, AcademicYearConfig, AcademicClass, AcademicBatch } from '../types';
 import { 
   INITIAL_INSTITUTIONAL_USERS, 
   subscribeToUsers, 
@@ -32,6 +35,11 @@ import {
   deleteUserFromFirestore,
   saveProposalToFirestore
 } from '../utils/firestoreSync';
+import { 
+  loadAcademicStructure, 
+  saveAcademicStructure, 
+  DEFAULT_ACADEMIC_STRUCTURE 
+} from '../utils/academicStructure';
 
 interface AdminPanelProps {
   proposals: ProjectProposal[];
@@ -46,7 +54,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onNavigateToTab,
   onUpdateProposal
 }) => {
-  const [activeSection, setActiveSection] = useState<'users' | 'allocations'>('users');
+  const [activeSection, setActiveSection] = useState<'users' | 'allocations' | 'structure'>('users');
   const [userList, setUserList] = useState<UserAccount[]>(() => {
     try {
       const saved = localStorage.getItem('dbit_admin_users');
@@ -63,6 +71,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Academic Structure State (FE, SE, TE, BE with Classes & Batches)
+  const [academicStructure, setAcademicStructure] = useState<AcademicYearConfig[]>(() => loadAcademicStructure());
+  const [activeYearKey, setActiveYearKey] = useState<string>('SE');
+  const [newClassName, setNewClassName] = useState('');
+  const [newBatchName, setNewBatchName] = useState('');
+  const [activeClassForBatch, setActiveClassForBatch] = useState<string>('');
+
   // Project Allocation Modal State
   const [selectedPropToAssign, setSelectedPropToAssign] = useState<ProjectProposal | null>(null);
   const [assignedGuideName, setAssignedGuideName] = useState('');
@@ -74,15 +89,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newPassword, setNewPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  // Form State for New Account Creation
+  // User Details Edit State (Admin can change Email, Name, Role, Cohort, Roll, Group)
+  const [editingUserDetails, setEditingUserDetails] = useState<UserAccount | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState<UserRole>('student');
+  const [editDepartment, setEditDepartment] = useState('Computer Engineering');
+  const [editRollNo, setEditRollNo] = useState('');
+  const [editGroupNo, setEditGroupNo] = useState<number | undefined>(undefined);
+  const [editYear, setEditYear] = useState('SE');
+  const [editClass, setEditClass] = useState('COMPS C');
+  const [editBatch, setEditBatch] = useState('Batch A');
+  const [isSavingUserEdit, setIsSavingUserEdit] = useState(false);
+
+  // Form State for New Account Creation (Track No removed per specification; Year/Class/Batch selector)
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('dbit2026');
   const [role, setRole] = useState<UserRole>('student');
   const [rollNo, setRollNo] = useState('');
-  const [cohort, setCohort] = useState('SE COMPS C (Batch A)');
+  const [createYear, setCreateYear] = useState('SE');
+  const [createClass, setCreateClass] = useState('COMPS C');
+  const [createBatch, setCreateBatch] = useState('Batch A');
   const [groupNo, setGroupNo] = useState<number>(5);
-  const [trackNo, setTrackNo] = useState<number>(7);
   const [department, setDepartment] = useState('Computer Engineering');
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -151,15 +180,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    const calculatedCohort = role === 'student'
+      ? `${createYear} ${createClass} (${createBatch})`
+      : role === 'guide'
+        ? `${department} Faculty Guide`
+        : role === 'coordinator'
+          ? `${createYear} Capstone Coordinator`
+          : 'DBIT Department Admin';
+
     const payload = {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password: password.trim() || 'dbit2026',
       role,
       rollNo: role === 'student' ? rollNo.trim() : null,
-      cohort: cohort.trim(),
+      cohort: calculatedCohort,
       groupNo: role === 'student' ? Number(groupNo) : null,
-      trackNo: role === 'student' || role === 'guide' ? Number(trackNo) : null,
+      trackNo: null, // Track number removed per specification: will be assigned when a leader adds students to a project
       department
     };
 
@@ -190,7 +227,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           rollNo: payload.rollNo || undefined,
           cohort: payload.cohort,
           groupNo: payload.groupNo || undefined,
-          trackNo: payload.trackNo || undefined,
+          trackNo: undefined,
           department: payload.department,
           assignedProjectCount: 0,
           createdAt: new Date().toISOString()
@@ -217,6 +254,169 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     } finally {
       setIsCreating(false);
     }
+  };
+
+  // Open Edit User Details Modal
+  const openEditModal = (user: UserAccount) => {
+    setEditingUserDetails(user);
+    setEditName(user.name);
+    setEditEmail(user.email);
+    setEditRole(user.role);
+    setEditDepartment(user.department || 'Computer Engineering');
+    setEditRollNo(user.rollNo || '');
+    setEditGroupNo(user.groupNo || 1);
+
+    // Parse cohort e.g. "SE COMPS C (Batch A)"
+    let y = 'SE';
+    let c = 'COMPS C';
+    let b = 'Batch A';
+    if (user.cohort) {
+      const parts = user.cohort.match(/(FE|SE|TE|BE)\s+([^(]+)(?:\(([^)]+)\))?/);
+      if (parts) {
+        if (parts[1]) y = parts[1].trim();
+        if (parts[2]) c = parts[2].trim();
+        if (parts[3]) b = parts[3].trim();
+      }
+    }
+    setEditYear(y);
+    setEditClass(c);
+    setEditBatch(b);
+  };
+
+  // Save Edit User Details
+  const handleSaveUserEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUserDetails) return;
+    setIsSavingUserEdit(true);
+    setErrorMsg(null);
+
+    const calculatedCohort = editRole === 'student'
+      ? `${editYear} ${editClass} (${editBatch})`
+      : editingUserDetails.cohort || `${editDepartment} Faculty`;
+
+    const updates: Partial<UserAccount> = {
+      name: editName.trim(),
+      email: editEmail.trim().toLowerCase(),
+      role: editRole,
+      department: editDepartment,
+      rollNo: editRole === 'student' ? editRollNo.trim() : undefined,
+      groupNo: editRole === 'student' ? Number(editGroupNo) : undefined,
+      cohort: calculatedCohort
+    };
+
+    try {
+      try {
+        await fetch(`/api/users/${editingUserDetails.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        });
+      } catch (err) {
+        console.warn('API error during user update, falling back:', err);
+      }
+
+      const updatedUser: UserAccount = {
+        ...editingUserDetails,
+        ...updates
+      };
+
+      const updatedList = userList.map(u => u.id === editingUserDetails.id ? updatedUser : u);
+      setUserList(updatedList);
+      try {
+        localStorage.setItem('dbit_admin_users', JSON.stringify(updatedList));
+      } catch (e) {}
+
+      saveUserToFirestore(updatedUser);
+
+      setSuccessMsg(`User details updated for ${updatedUser.name} (${updatedUser.email})!`);
+      setEditingUserDetails(null);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to update user details.');
+    } finally {
+      setIsSavingUserEdit(false);
+    }
+  };
+
+  // Academic Structure handlers
+  const handleAddClass = (yearKey: string) => {
+    if (!newClassName.trim()) return;
+    const trimmed = newClassName.trim().toUpperCase();
+    const updated = academicStructure.map(y => {
+      if (y.yearKey !== yearKey) return y;
+      const newClass: AcademicClass = {
+        id: `${yearKey.toLowerCase()}-${trimmed.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+        name: trimmed,
+        batches: [
+          { id: `b-a-${Date.now()}`, name: 'Batch A' },
+          { id: `b-b-${Date.now()}`, name: 'Batch B' },
+          { id: `b-c-${Date.now()}`, name: 'Batch C' }
+        ]
+      };
+      return {
+        ...y,
+        classes: [...y.classes, newClass]
+      };
+    });
+    setAcademicStructure(updated);
+    saveAcademicStructure(updated);
+    setNewClassName('');
+    setSuccessMsg(`Added class "${trimmed}" with default Batch A, B, and C!`);
+  };
+
+  const handleRemoveClass = (yearKey: string, classId: string, className: string) => {
+    if (!confirm(`Are you sure you want to delete class "${className}" and all its batches?`)) return;
+    const updated = academicStructure.map(y => {
+      if (y.yearKey !== yearKey) return y;
+      return {
+        ...y,
+        classes: y.classes.filter(c => c.id !== classId)
+      };
+    });
+    setAcademicStructure(updated);
+    saveAcademicStructure(updated);
+    setSuccessMsg(`Class "${className}" removed.`);
+  };
+
+  const handleAddBatch = (yearKey: string, classId: string) => {
+    if (!newBatchName.trim()) return;
+    const trimmed = newBatchName.trim();
+    const updated = academicStructure.map(y => {
+      if (y.yearKey !== yearKey) return y;
+      return {
+        ...y,
+        classes: y.classes.map(c => {
+          if (c.id !== classId) return c;
+          return {
+            ...c,
+            batches: [...c.batches, { id: `b-${Date.now()}`, name: trimmed }]
+          };
+        })
+      };
+    });
+    setAcademicStructure(updated);
+    saveAcademicStructure(updated);
+    setNewBatchName('');
+    setActiveClassForBatch('');
+    setSuccessMsg(`Added "${trimmed}" to class.`);
+  };
+
+  const handleRemoveBatch = (yearKey: string, classId: string, batchId: string, batchName: string) => {
+    const updated = academicStructure.map(y => {
+      if (y.yearKey !== yearKey) return y;
+      return {
+        ...y,
+        classes: y.classes.map(c => {
+          if (c.id !== classId) return c;
+          return {
+            ...c,
+            batches: c.batches.filter(b => b.id !== batchId)
+          };
+        })
+      };
+    });
+    setAcademicStructure(updated);
+    saveAcademicStructure(updated);
+    setSuccessMsg(`Batch "${batchName}" removed.`);
   };
 
   const handleDeleteUser = async (id: number, userName: string) => {
@@ -383,8 +583,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </div>
 
-      {/* Switcher: User Accounts vs Project Allocations */}
-      <div className="flex items-center gap-2 bg-white rounded-2xl p-2 border border-slate-200/80 shadow-xs">
+      {/* Switcher: User Accounts vs Project Allocations vs Academic Structure */}
+      <div className="flex flex-wrap items-center gap-2 bg-white rounded-2xl p-2 border border-slate-200/80 shadow-xs">
         <button
           type="button"
           onClick={() => setActiveSection('users')}
@@ -409,6 +609,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         >
           <UserCog className="w-4 h-4" />
           <span>Project &amp; Faculty Allocations ({proposals.length} Projects)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSection('structure')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            activeSection === 'structure'
+              ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <School className="w-4 h-4" />
+          <span>Academic Structure (Years, Classes &amp; Batches)</span>
         </button>
       </div>
 
@@ -568,6 +781,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 type="button"
+                                onClick={() => openEditModal(user)}
+                                className="text-slate-700 hover:text-black hover:bg-[#D4F938]/40 px-2.5 py-1 rounded-full transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+                                title="Edit User Details (Email, Name, Cohort, Roll, Group)"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-slate-800" />
+                                <span className="hidden sm:inline">Edit Details</span>
+                              </button>
+
+                              <button
+                                type="button"
                                 onClick={() => {
                                   setEditingUser(user);
                                   setNewPassword('');
@@ -606,7 +829,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
         </>
-      ) : (
+      ) : activeSection === 'allocations' ? (
         /* Allocations View: Assign Faculty Guides & Coordinators to Projects */
         <div className="space-y-6">
           {/* Header & Stats Bar */}
@@ -825,6 +1048,156 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
         </div>
+      ) : (
+        /* Academic Structure (Years, Classes & Batches) View */
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div>
+                <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938] font-bold uppercase tracking-wider">
+                  Academic Governance
+                </span>
+                <h3 className="text-xl font-black text-slate-900 mt-1">
+                  Class Divisions &amp; Batch Management
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Configure classes for First (FE), Second (SE), Third (TE), and Final Year (BE) with customized division batches (Default: Batch A, Batch B, Batch C).
+                </p>
+              </div>
+
+              {/* Year Selectors */}
+              <div className="flex items-center gap-1.5 bg-[#F4F5F8] p-1.5 rounded-2xl border border-slate-200">
+                {academicStructure.map(y => (
+                  <button
+                    key={y.yearKey}
+                    type="button"
+                    onClick={() => setActiveYearKey(y.yearKey)}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      activeYearKey === y.yearKey
+                        ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
+                        : 'text-slate-600 hover:text-black hover:bg-slate-200'
+                    }`}
+                  >
+                    {y.yearKey} ({y.classes.length} Classes)
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Selected Year Header & Add Class input */}
+            {(() => {
+              const currentYearObj = academicStructure.find(y => y.yearKey === activeYearKey) || academicStructure[0];
+              return (
+                <div className="space-y-6">
+                  {/* Add Class bar */}
+                  <div className="bg-[#F8F9FA] p-4 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <School className="w-5 h-5 text-slate-900" />
+                      <span className="text-xs font-bold text-slate-800">
+                        Add New Class in <strong className="text-black font-black">{currentYearObj.yearName}</strong>:
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-1 max-w-md">
+                      <input
+                        type="text"
+                        value={newClassName}
+                        onChange={e => setNewClassName(e.target.value)}
+                        placeholder="e.g. COMPS D or IT A or AI&DS A"
+                        className="bg-white rounded-xl px-3.5 py-2 border border-slate-200 text-xs font-bold text-slate-900 flex-1 focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddClass(currentYearObj.yearKey)}
+                        disabled={!newClassName.trim()}
+                        className="inline-flex items-center gap-1.5 bg-[#18191E] hover:bg-black text-[#D4F938] text-xs font-black px-4 py-2 rounded-xl disabled:opacity-40 transition-all cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Class</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Class Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {currentYearObj.classes.map(cls => (
+                      <div key={cls.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4 hover:border-slate-400 transition-all">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-7 h-7 rounded-lg bg-[#18191E] text-[#D4F938] font-black text-xs flex items-center justify-center">
+                              {currentYearObj.yearKey}
+                            </span>
+                            <h4 className="font-black text-slate-900 text-sm">
+                              {cls.name}
+                            </h4>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveClass(currentYearObj.yearKey, cls.id, cls.name)}
+                            className="text-slate-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
+                            title="Delete Class"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Batches Section */}
+                        <div className="space-y-2">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                            Batches ({cls.batches.length}):
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {cls.batches.map(batch => (
+                              <span 
+                                key={batch.id} 
+                                className="inline-flex items-center gap-1.5 bg-[#F4F5F8] text-slate-800 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-slate-200/80"
+                              >
+                                <span>{batch.name}</span>
+                                {cls.batches.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveBatch(currentYearObj.yearKey, cls.id, batch.id, batch.name)}
+                                    className="text-slate-400 hover:text-red-500 ml-0.5 cursor-pointer"
+                                    title="Remove Batch"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Add Batch to this Class */}
+                        <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            placeholder="Add batch (e.g. Batch D)"
+                            value={activeClassForBatch === cls.id ? newBatchName : ''}
+                            onFocus={() => setActiveClassForBatch(cls.id)}
+                            onChange={e => {
+                              setActiveClassForBatch(cls.id);
+                              setNewBatchName(e.target.value);
+                            }}
+                            className="bg-[#F8F9FA] rounded-xl px-2.5 py-1 text-[11px] border border-slate-200 font-medium flex-1 focus:outline-hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddBatch(currentYearObj.yearKey, cls.id)}
+                            disabled={activeClassForBatch !== cls.id || !newBatchName.trim()}
+                            className="bg-[#18191E] text-white hover:bg-black text-[10px] font-bold px-3 py-1.5 rounded-xl disabled:opacity-40 transition-all cursor-pointer"
+                          >
+                            + Batch
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
       )}
 
       {/* Quick Assign Modal */}
@@ -1021,10 +1394,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {role === 'student' && (
                 <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3">
                   <span className="font-bold text-slate-900 block text-xs">
-                    Student Cohort &amp; Project Group Linkage
+                    Academic Year, Class &amp; Batch Assignment
                   </span>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 mb-1">Roll No.</label>
                       <input
@@ -1032,7 +1405,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         value={rollNo}
                         onChange={e => setRollNo(e.target.value)}
                         placeholder="e.g. 01"
-                        className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono"
+                        className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono text-xs"
                       />
                     </div>
                     <div>
@@ -1041,28 +1414,95 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         type="number"
                         value={groupNo}
                         onChange={e => setGroupNo(parseInt(e.target.value) || 1)}
-                        className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Track No.</label>
-                      <input
-                        type="number"
-                        value={trackNo}
-                        onChange={e => setTrackNo(parseInt(e.target.value) || 1)}
-                        className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono"
+                        className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono text-xs"
                       />
                     </div>
                   </div>
 
+                  {/* Year -> Class -> Batch dropdown cascade */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Academic Year</label>
+                      <select
+                        value={createYear}
+                        onChange={e => {
+                          const yr = e.target.value;
+                          setCreateYear(yr);
+                          const yObj = academicStructure.find(y => y.yearKey === yr);
+                          if (yObj && yObj.classes.length > 0) {
+                            setCreateClass(yObj.classes[0].name);
+                            if (yObj.classes[0].batches.length > 0) {
+                              setCreateBatch(yObj.classes[0].batches[0].name);
+                            }
+                          }
+                        }}
+                        className="w-full bg-[#F4F5F8] rounded-xl px-2.5 py-1.5 border border-slate-200 font-bold text-xs"
+                      >
+                        {academicStructure.map(y => (
+                          <option key={y.yearKey} value={y.yearKey}>{y.yearName}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Class / Division</label>
+                      <select
+                        value={createClass}
+                        onChange={e => {
+                          const clsName = e.target.value;
+                          setCreateClass(clsName);
+                          const yObj = academicStructure.find(y => y.yearKey === createYear);
+                          const cObj = yObj?.classes.find(c => c.name === clsName);
+                          if (cObj && cObj.batches.length > 0) {
+                            setCreateBatch(cObj.batches[0].name);
+                          }
+                        }}
+                        className="w-full bg-[#F4F5F8] rounded-xl px-2.5 py-1.5 border border-slate-200 font-bold text-xs"
+                      >
+                        {(academicStructure.find(y => y.yearKey === createYear)?.classes || []).map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Batch</label>
+                      <select
+                        value={createBatch}
+                        onChange={e => setCreateBatch(e.target.value)}
+                        className="w-full bg-[#F4F5F8] rounded-xl px-2.5 py-1.5 border border-slate-200 font-bold text-xs"
+                      >
+                        {((academicStructure.find(y => y.yearKey === createYear)?.classes || [])
+                          .find(c => c.name === createClass)?.batches || []).map(b => (
+                          <option key={b.id} value={b.name}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] font-mono text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-200/60 flex items-center justify-between">
+                    <span>Generated Cohort:</span>
+                    <strong className="text-black font-black">{createYear} {createClass} ({createBatch})</strong>
+                  </div>
+                </div>
+              )}
+
+              {role === 'coordinator' && (
+                <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3">
+                  <span className="font-bold text-slate-900 block text-xs">
+                    Project Coordinator Cohort Responsibility
+                  </span>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-1">Class Cohort</label>
-                    <input
-                      type="text"
-                      value={cohort}
-                      onChange={e => setCohort(e.target.value)}
-                      className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-medium"
-                    />
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">Assigned Academic Year</label>
+                    <select
+                      value={createYear}
+                      onChange={e => setCreateYear(e.target.value)}
+                      className="w-full bg-[#F4F5F8] rounded-xl px-3 py-2 border border-slate-200 font-bold text-xs"
+                    >
+                      {academicStructure.map(y => (
+                        <option key={y.yearKey} value={y.yearKey}>{y.yearName}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               )}
@@ -1070,16 +1510,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {role === 'guide' && (
                 <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3">
                   <span className="font-bold text-slate-900 block text-xs">
-                    Faculty Guide Allocation
+                    Faculty Department &amp; Domain
                   </span>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-1">Assigned Track</label>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">Academic Department</label>
                     <input
-                      type="number"
-                      value={trackNo}
-                      onChange={e => setTrackNo(parseInt(e.target.value) || 7)}
-                      placeholder="e.g. 7"
-                      className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono"
+                      type="text"
+                      value={department}
+                      onChange={e => setDepartment(e.target.value)}
+                      className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-medium text-xs"
                     />
                   </div>
                 </div>
@@ -1175,6 +1614,209 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="bg-[#D4F938] hover:bg-[#cbf525] disabled:opacity-50 text-slate-950 font-black px-6 py-2.5 rounded-full shadow-md transition-all cursor-pointer"
                 >
                   {isUpdatingPassword ? 'Updating Password...' : 'Save New Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Details Modal (Email, Name, Role, Cohort, Roll, Group) */}
+      {editingUserDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-[#18191E] rounded-[34px] p-2 border border-black/40 shadow-2xl w-full max-w-xl my-8 overflow-hidden flex flex-col">
+            <div className="bg-[#18191E] text-white px-6 py-4 flex items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-[#D4F938] text-slate-950 flex items-center justify-center font-bold">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-[#D4F938] uppercase font-bold">
+                    Admin Governance
+                  </span>
+                  <h3 className="text-base font-black text-white mt-0.5">
+                    Edit Account Details: {editingUserDetails.name}
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingUserDetails(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUserEdit} className="p-6 bg-[#F4F5F8] rounded-[26px] space-y-4 text-xs m-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Institutional Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={e => setEditEmail(e.target.value)}
+                    className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Account Role
+                  </label>
+                  <select
+                    value={editRole}
+                    onChange={e => setEditRole(e.target.value as UserRole)}
+                    className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-bold text-slate-800 focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                  >
+                    <option value="student">Student</option>
+                    <option value="guide">Faculty Guide</option>
+                    <option value="coordinator">Project Coordinator</option>
+                    <option value="admin">Administrator</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    value={editDepartment}
+                    onChange={e => setEditDepartment(e.target.value)}
+                    className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Student specific fields: Roll No, Group No, Year, Class, Batch */}
+              {editRole === 'student' && (
+                <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3">
+                  <span className="font-bold text-slate-900 block text-xs">
+                    Academic Year, Class Division &amp; Batch
+                  </span>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Roll No.</label>
+                      <input
+                        type="text"
+                        value={editRollNo}
+                        onChange={e => setEditRollNo(e.target.value)}
+                        placeholder="e.g. 05"
+                        className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Group No.</label>
+                      <input
+                        type="number"
+                        value={editGroupNo || ''}
+                        onChange={e => setEditGroupNo(parseInt(e.target.value) || 1)}
+                        className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Year</label>
+                      <select
+                        value={editYear}
+                        onChange={e => {
+                          const yr = e.target.value;
+                          setEditYear(yr);
+                          const yObj = academicStructure.find(y => y.yearKey === yr);
+                          if (yObj && yObj.classes.length > 0) {
+                            setEditClass(yObj.classes[0].name);
+                            if (yObj.classes[0].batches.length > 0) {
+                              setEditBatch(yObj.classes[0].batches[0].name);
+                            }
+                          }
+                        }}
+                        className="w-full bg-[#F4F5F8] rounded-xl px-2.5 py-1.5 border border-slate-200 font-bold text-xs"
+                      >
+                        {academicStructure.map(y => (
+                          <option key={y.yearKey} value={y.yearKey}>{y.yearName}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Class</label>
+                      <select
+                        value={editClass}
+                        onChange={e => {
+                          const clsName = e.target.value;
+                          setEditClass(clsName);
+                          const yObj = academicStructure.find(y => y.yearKey === editYear);
+                          const cObj = yObj?.classes.find(c => c.name === clsName);
+                          if (cObj && cObj.batches.length > 0) {
+                            setEditBatch(cObj.batches[0].name);
+                          }
+                        }}
+                        className="w-full bg-[#F4F5F8] rounded-xl px-2.5 py-1.5 border border-slate-200 font-bold text-xs"
+                      >
+                        {(academicStructure.find(y => y.yearKey === editYear)?.classes || []).map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Batch</label>
+                      <select
+                        value={editBatch}
+                        onChange={e => setEditBatch(e.target.value)}
+                        className="w-full bg-[#F4F5F8] rounded-xl px-2.5 py-1.5 border border-slate-200 font-bold text-xs"
+                      >
+                        {((academicStructure.find(y => y.yearKey === editYear)?.classes || [])
+                          .find(c => c.name === editClass)?.batches || []).map(b => (
+                          <option key={b.id} value={b.name}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] font-mono text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-200/60 flex items-center justify-between">
+                    <span>Target Cohort:</span>
+                    <strong className="text-black font-black">{editYear} {editClass} ({editBatch})</strong>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setEditingUserDetails(null)}
+                  className="px-4 py-2 text-slate-500 hover:text-slate-800 font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingUserEdit}
+                  className="bg-[#D4F938] hover:bg-[#cbf525] disabled:opacity-50 text-slate-950 font-black px-6 py-2.5 rounded-full shadow-md transition-all cursor-pointer"
+                >
+                  {isSavingUserEdit ? 'Saving Changes...' : 'Save User Details'}
                 </button>
               </div>
             </form>

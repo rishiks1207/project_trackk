@@ -40,6 +40,7 @@ export interface GuideMessage {
 
 export type ProposalStatus = 
   | 'draft'
+  | 'submitted'
   | 'evaluating_similarity'
   | 'flagged_conflict'
   | 'coordinator_arbitration'
@@ -176,4 +177,21 @@ export interface HistoricalProject {
   githubUrl?: string;
   finalRating: string;
   status: 'Archived' | 'Approved' | 'Completed';
+}
+
+export interface AcademicBatch {
+  id: string;
+  name: string;
+}
+
+export interface AcademicClass {
+  id: string;
+  name: string;
+  batches: AcademicBatch[];
+}
+
+export interface AcademicYearConfig {
+  yearKey: 'FE' | 'SE' | 'TE' | 'BE';
+  yearName: string;
+  classes: AcademicClass[];
 }

@@ -22,7 +22,8 @@ import {
   Calendar,
   MessageSquare,
   Presentation,
-  PlusCircle
+  PlusCircle,
+  ArrowRight
 } from 'lucide-react';
 import { ProjectProposal, UserRole, UserAccount } from '../types';
 
@@ -82,50 +83,8 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
   if (currentRole === 'student' && !myProposal) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 mb-8">
-        {/* 1. SBERT Screening Sandbox */}
-        <div className="lg:col-span-4 bg-white rounded-[28px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow duration-300">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#18191E] flex items-center justify-center text-[#D4F938]">
-                  <Cpu className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">SBERT Originality Screening</h3>
-                  <span className="text-[10px] font-mono text-slate-500">Awaiting Submission</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-3xl font-black text-slate-300 tracking-tight font-mono">--%</span>
-              <span className="bg-slate-100 text-slate-600 font-extrabold text-[11px] px-2.5 py-0.5 rounded-full">
-                Not Submitted
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 font-medium mb-4">
-              Test your project idea in the SBERT sandbox to screen for overlap with 500+ archived theses before submitting.
-            </p>
-
-            <div className="p-4 bg-[#F4F5F8] rounded-2xl border border-slate-200/80 text-center space-y-2">
-              <Sparkles className="w-5 h-5 text-black mx-auto" />
-              <p className="text-xs font-bold text-slate-700">Pre-Submission Originality Sandbox</p>
-              <button
-                type="button"
-                onClick={() => onNavigateToTab('repository')}
-                className="text-xs font-bold text-black bg-[#D4F938] hover:bg-[#c2e72f] px-4 py-1.5 rounded-full transition-colors cursor-pointer"
-              >
-                Test Idea in Sandbox
-              </button>
-            </div>
-          </div>
-          <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400">
-            Automated SBERT + TF-IDF matrix
-          </div>
-        </div>
-
-        {/* 2. 14-Week Stage-Gate Status */}
-        <div className="lg:col-span-4 bg-white rounded-[28px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow duration-300">
+        {/* 1. 14-Week Stage-Gate Status (Spans 6 cols) */}
+        <div className="lg:col-span-6 bg-white rounded-[28px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow duration-300">
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -146,13 +105,13 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-slate-500 font-medium mb-4">
-              Experiment milestones and Gantt timeline activate immediately upon proposal registration.
+              Experiment milestones and Gantt timeline activate immediately upon proposal registration and coordinator approval.
             </p>
 
             <div className="p-4 bg-[#F4F5F8] rounded-2xl border border-slate-200/80 space-y-2 text-xs">
               <div className="flex items-center justify-between font-bold text-slate-700">
                 <span>Phase 1: Design (W1–W6)</span>
-                <span className="text-[10px] text-slate-400">Awaiting Topic</span>
+                <span className="text-[10px] text-slate-400">Awaiting Topic Submission</span>
               </div>
               <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                 <div className="w-0 h-full bg-[#D4F938]" />
@@ -165,8 +124,8 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
           </div>
         </div>
 
-        {/* 3. GitHub Integration */}
-        <div className="lg:col-span-4 bg-white rounded-[28px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow duration-300">
+        {/* 2. GitHub Integration (Spans 6 cols) */}
+        <div className="lg:col-span-6 bg-white rounded-[28px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow duration-300">
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -232,75 +191,90 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 mb-8">
         
-        {/* 1. Student's Own Project Novelty & SBERT Semantic Index (Spans 4 cols on lg) */}
+        {/* 1. Student's Own Project Details & Mentorship Status (Spans 4 cols on lg) */}
         <div className="lg:col-span-4 bg-white rounded-[28px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow duration-300">
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-[#18191E] flex items-center justify-center text-[#D4F938]">
-                  <Cpu className="w-4 h-4" />
+                  <FolderGit2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">My Project SBERT Novelty</h3>
+                  <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">Project Status &amp; Mentorship</h3>
                   <span className="text-[10px] font-mono text-slate-500">{myProposal?.projectId || 'Group 05'}</span>
                 </div>
               </div>
               <button 
                 onClick={() => onNavigateToTab('proposals')}
                 className="text-slate-400 hover:text-black transition-colors p-1"
-                title="View Full SBERT Analysis"
+                title="View Full Proposal Details"
               >
                 <MoreVertical className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Metric & Neon-Lime Badge */}
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-3xl lg:text-4xl font-black text-[#18191E] tracking-tight font-mono tabular-nums">
-                {myNovelty}%
-              </span>
-              <span className="bg-[#D4F938] text-black font-extrabold text-[11px] px-2.5 py-0.5 rounded-full shadow-xs">
-                Clean Novelty
-              </span>
+            {/* Project Title & Domain Badge */}
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                  myProposal?.status === 'approved' 
+                    ? 'bg-[#C6B5FD] text-black' 
+                    : myProposal?.status === 'flagged_conflict'
+                      ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                      : 'bg-[#D4F938] text-black'
+                }`}>
+                  {myProposal?.status === 'approved' 
+                    ? 'Topic Approved & Active' 
+                    : myProposal?.status === 'flagged_conflict'
+                      ? 'Flagged for Arbitration'
+                      : 'Awaiting Coordinator Approval'}
+                </span>
+                <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {myProposal?.domain || 'Computer Engineering'}
+                </span>
+              </div>
+              <h4 className="text-base font-black text-[#18191E] leading-snug line-clamp-2">
+                {myProposal?.title || 'Academic Capstone Project'}
+              </h4>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium -mt-1 mb-4">
-              Screened against 500+ DBIT engineering theses
-            </p>
 
-            {/* Signature Intersecting Circular Bubbles (Lavender, Charcoal, and Neon Lime) */}
-            <div className="relative h-44 w-full flex items-center justify-center my-1">
-              {/* Soft Lilac Bubble: SBERT dense vectors */}
-              <div className="absolute left-4 sm:left-6 top-2 w-28 h-28 rounded-full bg-[#C6B5FD] flex flex-col items-center justify-center text-black shadow-xs transition-transform duration-300 group-hover:scale-105">
-                <span className="text-lg font-black tracking-tight font-mono">{mySbertScore}%</span>
-                <span className="text-[9px] font-bold uppercase tracking-wider">sbert</span>
+            {/* Quick Details Grid */}
+            <div className="bg-[#F8F9FA] rounded-2xl p-3.5 border border-slate-200/60 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-medium">Assigned Coordinator:</span>
+                <span className="font-bold text-[#18191E]">{myProposal?.coordinatorName || 'Prof. DBIT Coordinator'}</span>
               </div>
-
-              {/* Dark Obsidian Bubble: TF-IDF lexical n-grams */}
-              <div className="absolute right-4 sm:right-6 top-8 w-24 h-24 rounded-full bg-[#18191E] flex flex-col items-center justify-center text-white shadow-md transition-transform duration-300 group-hover:scale-105 group-hover:-translate-y-1">
-                <span className="text-base font-black tracking-tight font-mono text-white">{myLexicalScore}%</span>
-                <span className="text-[9px] font-medium text-slate-300 uppercase tracking-wider">lexical</span>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-medium">Faculty Guide:</span>
+                <span className="font-bold text-[#18191E]">
+                  {myProposal?.status === 'approved' 
+                    ? (myProposal?.guideName || 'Faculty Guide') 
+                    : `${myProposal?.guideName || 'Faculty Guide'} (Pending Approval)`}
+                </span>
               </div>
-
-              {/* Neon Lime Bubble: Verified unique topics */}
-              <div className="absolute bottom-1 w-24 h-24 rounded-full bg-[#D4F938] flex flex-col items-center justify-center text-black shadow-md z-10 transition-transform duration-300 group-hover:scale-110">
-                <span className="text-lg font-black tracking-tight font-mono">{myNovelty}%</span>
-                <span className="text-[9px] font-extrabold text-black uppercase tracking-wider">unique</span>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-medium">Track &amp; Group:</span>
+                <span className="font-mono font-bold text-slate-700">Track {myProposal?.trackNo || 7} • Group {myProposal?.groupNo || 5}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-medium">Team Members:</span>
+                <span className="font-bold text-slate-800">{myProposal?.teamMembers?.length || 4} Students</span>
               </div>
             </div>
           </div>
 
-          {/* SBERT Clearance Info Bar */}
-          <div className="space-y-2 pt-3 border-t border-slate-100 mt-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500 font-medium">Topic Conflict Threshold:</span>
-              <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                &lt; 75% Cutoff (Clear)
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500 font-medium">Assigned Guide:</span>
-              <span className="font-bold text-[#18191E]">{myProposal?.guideName || 'Mr. Nazareth Remedios'}</span>
-            </div>
+          {/* Quick Action Button */}
+          <div className="pt-3 border-t border-slate-100 mt-3 flex items-center justify-between">
+            <span className="text-[11px] text-slate-500 font-medium">
+              {myProposal?.status === 'approved' ? 'Stage 1 Design open' : 'Review in progress'}
+            </span>
+            <button
+              onClick={() => onNavigateToTab('proposals')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#18191E] hover:text-black bg-[#D4F938] hover:bg-[#cbf525] px-3.5 py-1.5 rounded-full transition-all cursor-pointer"
+            >
+              <span>View Proposal</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 

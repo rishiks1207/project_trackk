@@ -48,7 +48,15 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
   onSubmitPitchDefense
 }) => {
   // Navigation mode: 'list' (topic arbitrations list) or 'defense' (pitch defense details)
-  const [viewMode, setViewMode] = useState<'list' | 'defense'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'defense'>(() => {
+    return currentRole === 'student' ? 'defense' : 'list';
+  });
+
+  useEffect(() => {
+    if (currentRole === 'student') {
+      setViewMode('defense');
+    }
+  }, [currentRole]);
 
   // Find clashing proposals or flagged conflicts
   const flaggedProposals = proposals.filter(
@@ -412,58 +420,77 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
       {/* Top Navigation & Breadcrumb Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200 cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Arbitrations List</span>
-          </button>
-          
-          <div className="h-4 w-px bg-slate-300 hidden sm:block" />
+          {currentRole !== 'student' && (
+            <>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#F4F5F8] hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors border border-slate-200 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Arbitrations List</span>
+              </button>
+              
+              <div className="h-4 w-px bg-slate-300 hidden sm:block" />
+            </>
+          )}
 
           <div className="text-xs font-semibold text-slate-600">
-            Arbitration: <span className="text-slate-900 font-bold">Group {activeProposal.groupNo}</span>
-            {conflictingProposal && (
-              <span> vs <span className="text-slate-900 font-bold">Group {conflictingProposal.groupNo}</span></span>
+            {currentRole === 'student' ? (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[11px] font-black px-2.5 py-0.5 rounded-full bg-[#18191E] text-[#D4F938]">
+                  Group {String(activeProposal.groupNo).padStart(2, '0')}
+                </span>
+                <span className="text-slate-900 font-bold">My Project 200-Word Pitch Defense</span>
+              </div>
+            ) : (
+              <>
+                Arbitration: <span className="text-slate-900 font-bold">Group {activeProposal.groupNo}</span>
+                {conflictingProposal && (
+                  <span> vs <span className="text-slate-900 font-bold">Group {conflictingProposal.groupNo}</span></span>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Quick Proposal Switcher Dropdown */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-slate-500 shrink-0">Switch Topic:</label>
-          <select
-            value={activeProposal.id}
-            onChange={(e) => setSelectedProposalId(e.target.value)}
-            className="px-3 py-1.5 text-xs font-bold bg-[#F4F5F8] border border-slate-200 rounded-full focus:bg-white focus:outline-hidden text-slate-800 cursor-pointer"
-          >
-            {proposals.map(p => (
-              <option key={p.id} value={p.id}>
-                Group {p.groupNo} (Track {p.trackNo}): {p.title.substring(0, 32)}...
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Quick Proposal Switcher Dropdown (Faculty & Coordinator only) */}
+        {currentRole !== 'student' && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-slate-500 shrink-0">Switch Topic:</label>
+            <select
+              value={activeProposal.id}
+              onChange={(e) => setSelectedProposalId(e.target.value)}
+              className="px-3 py-1.5 text-xs font-bold bg-[#F4F5F8] border border-slate-200 rounded-full focus:bg-white focus:outline-hidden text-slate-800 cursor-pointer"
+            >
+              {proposals.map(p => (
+                <option key={p.id} value={p.id}>
+                  Group {p.groupNo} (Track {p.trackNo}): {p.title.substring(0, 32)}...
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Main Pitch Defense Matrix Box */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         
         {/* Metric Header Banner */}
-        <div className="p-6 bg-[#18191E] text-white flex flex-wrap items-center justify-between gap-4">
+        <div className="p-5 sm:p-6 bg-[#18191E] text-white flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#D4F938] text-black flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#D4F938] text-black flex items-center justify-center font-bold shrink-0">
               <Scale className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Semantic Overlap &amp; Topic Clash Matrix</h3>
-              <p className="text-xs text-white/70">{activeProposal.title}</p>
+              <h3 className="text-base font-bold text-white">
+                {currentRole === 'student' ? 'My 200-Word Novelty Pitch Defense' : 'Semantic Overlap & Topic Clash Matrix'}
+              </h3>
+              <p className="text-xs text-white/70 max-w-md truncate">{activeProposal.title}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
             <div className="flex items-center gap-3 text-xs">
               <div>
                 <span className="text-[10px] text-white/50 block font-bold uppercase tracking-wider">Overall Sim</span>
@@ -487,20 +514,30 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
               </div>
             </div>
 
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
-              Potential Overlap Detected
-            </span>
+            {currentRole === 'student' ? (
+              <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                activeProposal.status === 'approved'
+                  ? 'bg-[#D4F938]/20 text-[#D4F938] border border-[#D4F938]/30'
+                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              }`}>
+                {activeProposal.status === 'approved' ? 'Novelty Approved' : 'Defense Under Review'}
+              </span>
+            ) : (
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
+                Potential Overlap Detected
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Side-by-Side Comparison Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
+        {/* Content Container: Single column for student, Dual column side-by-side for Coordinator/Faculty */}
+        <div className={currentRole === 'student' ? "p-4 sm:p-7 space-y-5" : "grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-200"}>
           
           {/* ================= COLUMN A: PROPOSAL A ================= */}
-          <div className="p-6 sm:p-7 space-y-4">
+          <div className={currentRole === 'student' ? "space-y-4" : "p-6 sm:p-7 space-y-4"}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938] font-black uppercase">
-                Proposal A: Group {String(activeProposal.groupNo).padStart(2, '0')} (Track {activeProposal.trackNo})
+                {currentRole === 'student' ? `My Proposal: Group ${String(activeProposal.groupNo).padStart(2, '0')}` : `Proposal A: Group ${String(activeProposal.groupNo).padStart(2, '0')} (Track ${activeProposal.trackNo})`}
               </span>
               <span className="text-xs font-semibold text-slate-500">{activeProposal.cohort}</span>
             </div>
@@ -615,8 +652,8 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
             </div>
           </div>
 
-          {/* ================= COLUMN B: CONFLICTING PROPOSAL ================= */}
-          {conflictingProposal ? (
+          {/* ================= COLUMN B: CONFLICTING PROPOSAL (COORDINATOR & FACULTY ONLY) ================= */}
+          {currentRole !== 'student' && (conflictingProposal ? (
             <div className="p-6 sm:p-7 space-y-4 bg-[#F4F5F8]/40">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-[#C6B5FD] text-black font-black uppercase">
@@ -718,7 +755,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
                 This project does not conflict with any concurrent cohort submissions. Review the student pitch defense above.
               </p>
             </div>
-          )}
+          ))}
         </div>
 
         {/* ================= STUDENT PITCH EDITING FORM (STUDENT ROLE ONLY) ================= */}
