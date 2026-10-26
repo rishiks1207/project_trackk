@@ -39,7 +39,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
   onOpenGuideMessageModal
 }) => {
   return (
-    <aside className="w-full md:w-64 lg:w-72 bg-[#18191E] text-white p-5 lg:p-6 flex flex-col justify-between shrink-0 rounded-t-[32px] md:rounded-t-none md:rounded-l-[36px]">
+    <aside className="w-full md:w-64 lg:w-72 bg-[#18191E] text-white p-5 lg:p-6 flex flex-col justify-between shrink-0 border-r border-white/10 md:min-h-screen">
       <div>
         {/* Brand Logo with Neon-Lime Geometric Spark */}
         <div className="flex items-center gap-3 mb-8 px-2">

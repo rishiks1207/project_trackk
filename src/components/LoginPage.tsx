@@ -104,13 +104,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#DCE6C8] p-3 sm:p-5 lg:p-7 flex items-center justify-center font-sans antialiased text-slate-900 selection:bg-[#D4F938] selection:text-slate-950">
+    <div className="min-h-screen w-full bg-[#18191E] flex items-center justify-center font-sans antialiased text-slate-900 selection:bg-[#D4F938] selection:text-slate-950 p-4 sm:p-6 lg:p-8">
       
-      {/* Master Tablet/Cockpit Frame Enclosure (Matching Reference Mockup Outer Frame) */}
-      <div className="w-full max-w-[1240px] bg-[#18191E] rounded-[34px] sm:rounded-[42px] p-2.5 sm:p-3 shadow-2xl flex flex-col lg:flex-row overflow-hidden border border-black/40">
+      {/* Centered Login Card Container (Clean, no outer pale-green frame) */}
+      <div className="w-full max-w-5xl bg-[#18191E] rounded-3xl shadow-2xl flex flex-col lg:flex-row overflow-hidden border border-white/10">
         
         {/* Left Dark Rail / Brand & Role Showcase */}
-        <div className="w-full lg:w-5/12 bg-[#18191E] text-white p-6 sm:p-8 flex flex-col justify-between rounded-t-[28px] lg:rounded-t-none lg:rounded-l-[34px]">
+        <div className="w-full lg:w-5/12 bg-[#18191E] text-white p-6 sm:p-8 flex flex-col justify-between">
           <div>
             {/* Brand Logo with 4-Petal Spark in Neon-Lime */}
             <div className="flex items-center gap-3 mb-8">
@@ -207,7 +207,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         </div>
 
         {/* Right Main Porcelain Sign-in Card */}
-        <div className="flex-1 bg-[#F4F5F8] rounded-[26px] sm:rounded-[34px] p-6 sm:p-10 flex flex-col justify-between shadow-inner">
+        <div className="flex-1 bg-[#F4F5F8] p-6 sm:p-10 flex flex-col justify-between">
           <div>
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">

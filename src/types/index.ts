@@ -17,6 +17,15 @@ export interface UserAccount {
   createdAt?: string;
 }
 
+export interface MessageReply {
+  id: string;
+  senderName: string;
+  senderRole: UserRole;
+  senderEmail?: string;
+  message: string;
+  timestamp: string;
+}
+
 export interface GuideMessage {
   id: string;
   senderName: string;
@@ -26,6 +35,7 @@ export interface GuideMessage {
   message: string;
   urgency: 'normal' | 'high' | 'critical';
   timestamp: string;
+  replies?: MessageReply[];
 }
 
 export type ProposalStatus = 

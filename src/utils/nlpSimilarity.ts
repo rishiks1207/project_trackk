@@ -196,7 +196,20 @@ export function scanProposalSimilarity(
   historicalProjects: HistoricalProject[]
 ): SimilarityResult {
   const fullText = `${title}. ${abstract}`;
+  if (!title.trim() && !abstract.trim()) {
+    return {
+      overallScore: 0,
+      sbertScore: 0,
+      tfidfScore: 0,
+      isConflict: false,
+      explanation: 'Please enter a title and abstract to run real-time SBERT similarity screening.'
+    };
+  }
+
   const corpusTexts = historicalProjects.map(p => `${p.title}. ${p.abstract}`);
+  // Compute query embeddings and TF-IDF once outside the loop for high efficiency
+  const sbertQuery = createSemanticEmbedding(fullText);
+  const tfidfQuery = computeTFIDF(fullText, corpusTexts);
 
   let highestScore = 0;
   let bestMatch: HistoricalProject | null = null;
@@ -204,12 +217,25 @@ export function scanProposalSimilarity(
 
   for (const project of historicalProjects) {
     const targetText = `${project.title}. ${project.abstract}`;
-    const scores = calculateHybridSimilarity(fullText, targetText, corpusTexts);
+    
+    // 1. SBERT Contextual Semantic Similarity
+    const sbertTarget = createSemanticEmbedding(targetText);
+    const sbertScore = computeCosineSimilarity(sbertQuery, sbertTarget);
 
-    if (scores.overallScore > highestScore) {
-      highestScore = scores.overallScore;
+    // 2. TF-IDF Lexical Similarity
+    const tfidfTarget = computeTFIDF(targetText, corpusTexts);
+    const tfidfScore = computeCosineSimilarity(tfidfQuery, tfidfTarget);
+
+    // Hybrid weighting (Dev et al. 2024: SBERT contextual weight 0.65, TF-IDF lexical weight 0.35)
+    const blendedScore = 0.65 * sbertScore + 0.35 * tfidfScore;
+    const overallScore = Math.min(1.0, Math.max(0.0, Math.round(blendedScore * 1000) / 1000));
+    const normalizedSbert = Math.min(1.0, Math.max(0.0, Math.round(sbertScore * 1000) / 1000));
+    const normalizedTfidf = Math.min(1.0, Math.max(0.0, Math.round(tfidfScore * 1000) / 1000));
+
+    if (overallScore > highestScore) {
+      highestScore = overallScore;
       bestMatch = project;
-      bestScores = scores;
+      bestScores = { sbertScore: normalizedSbert, tfidfScore: normalizedTfidf };
     }
   }
 

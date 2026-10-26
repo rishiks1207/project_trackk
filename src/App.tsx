@@ -567,6 +567,30 @@ export default function App() {
     showToast('Arbitration verdict recorded and student teams notified.');
   };
 
+  const handleSavePitchDefense = (
+    proposalId: string, 
+    pitchText: string,
+    keyDifferentiator?: string,
+    targetStack?: string
+  ) => {
+    setProposals(prev => prev.map(p => {
+      if (p.id !== proposalId) return p;
+      const updatedProposal: ProjectProposal = {
+        ...p,
+        pitchDefense: {
+          content: pitchText,
+          submittedAt: new Date().toISOString(),
+          keyDifferentiator: keyDifferentiator || p.pitchDefense?.keyDifferentiator || 'SBERT Embeddings & DBIT Stage Gate Workflow',
+          targetStack: targetStack || p.pitchDefense?.targetStack || p.techStack.join(', '),
+          expectedDeliverable: p.pitchDefense?.expectedDeliverable || 'Full Functional MVP'
+        }
+      };
+      saveProposalToFirestore(updatedProposal);
+      return updatedProposal;
+    }));
+    showToast('200-Word Pitch Defense recorded and saved to database!');
+  };
+
   const handleQuickApprove = (propId: string) => {
     setProposals(prev => prev.map(p => {
       if (p.id !== propId) return p;
@@ -692,7 +716,7 @@ export default function App() {
   const viewDetails = getViewDetails();
 
   return (
-    <div className="min-h-screen bg-[#DCE6C8] p-2.5 sm:p-4 lg:p-6 flex items-center justify-center font-sans antialiased text-slate-900 selection:bg-[#D4F938] selection:text-slate-950">
+    <div className="min-h-screen w-full bg-[#F4F5F8] flex flex-col md:flex-row font-sans antialiased text-slate-900 selection:bg-[#D4F938] selection:text-slate-950">
       
       {/* Dark Floating Toast Notification */}
       {toastMessage && (
@@ -708,22 +732,19 @@ export default function App() {
         </div>
       )}
 
-      {/* Master Tablet/Cockpit Frame Enclosure (Matching Reference Mockup Outer Frame) */}
-      <div className="w-full max-w-[1580px] bg-[#18191E] rounded-[34px] sm:rounded-[40px] p-2 sm:p-2.5 shadow-2xl flex flex-col md:flex-row min-h-[920px] overflow-hidden border border-black/40">
-        
-        {/* Left Dark Sidebar Rail (Flux Layout) */}
-        <FluxSidebar
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          currentRole={currentRole}
-          conflictCount={conflictCount}
-          proposalsCount={proposals.length}
-          onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
-          onOpenGuideMessageModal={() => setIsGuideMessageModalOpen(true)}
-        />
+      {/* Left Dark Sidebar Rail (Flush edge-to-edge layout) */}
+      <FluxSidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        currentRole={currentRole}
+        conflictCount={conflictCount}
+        proposalsCount={proposals.length}
+        onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
+        onOpenGuideMessageModal={() => setIsGuideMessageModalOpen(true)}
+      />
 
-        {/* Right Main Porcelain Content Viewport */}
-        <div className="flex-1 bg-[#F4F5F8] rounded-[26px] sm:rounded-[32px] p-5 sm:p-7 lg:p-8 flex flex-col overflow-y-auto max-h-[94vh] shadow-inner">
+      {/* Right Main Porcelain Content Viewport (Straight up edge-to-edge webapp) */}
+      <div className="flex-1 bg-[#F4F5F8] p-5 sm:p-7 lg:p-8 flex flex-col overflow-y-auto min-h-screen">
           
           {/* Top Bar with User Avatar, Pill Search, and Notification Bell */}
           <FluxTopBar
@@ -1595,9 +1616,7 @@ export default function App() {
                 proposals={proposals}
                 currentRole={currentRole}
                 onArbitrateConflict={handleArbitrateConflict}
-                onSubmitPitchDefense={(id, text) => {
-                  showToast('Pitch defense statement saved.');
-                }}
+                onSubmitPitchDefense={handleSavePitchDefense}
               />
             </div>
           )}
@@ -1645,7 +1664,6 @@ export default function App() {
           )}
 
         </div>
-      </div>
 
       {/* Modals */}
       <ProposalSubmissionModal

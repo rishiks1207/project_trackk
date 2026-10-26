@@ -50,8 +50,9 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
   const [githubUrl, setGithubUrl] = useState('');
   const [guideName, setGuideName] = useState(currentUser?.role === 'guide' ? currentUser.name : 'Mr. Nazareth Remedios');
   
-  // Database students
+  // Database students & guides
   const [availableStudents, setAvailableStudents] = useState<UserAccount[]>([]);
+  const [availableGuides, setAvailableGuides] = useState<UserAccount[]>([]);
   const [showStudentPicker, setShowStudentPicker] = useState(false);
 
   // Team members
@@ -102,6 +103,13 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
       if (studs.length > 0) {
         setAvailableStudents(studs);
       }
+      const gds = allUsers.filter(u => u.role === 'guide');
+      if (gds.length > 0) {
+        setAvailableGuides(gds);
+        if (currentUser?.role !== 'guide' && !guideName) {
+          setGuideName(gds[0].name);
+        }
+      }
     });
 
     // 2. Also try API endpoint if on Express
@@ -123,12 +131,23 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
             });
             return combined;
           });
+
+          const gds = data.filter((u: UserAccount) => u.role === 'guide');
+          setAvailableGuides(prev => {
+            const combined = [...prev];
+            gds.forEach((g: UserAccount) => {
+              if (!combined.some(c => c.email.toLowerCase() === g.email.toLowerCase())) {
+                combined.push(g);
+              }
+            });
+            return combined;
+          });
         }
       })
-      .catch(err => console.warn('Could not load registered students:', err));
+      .catch(err => console.warn('Could not load registered users:', err));
 
     return () => unsub();
-  }, []);
+  }, [currentUser, guideName]);
 
   // Pitch defense
   const [pitchDefense, setPitchDefense] = useState('');
@@ -440,9 +459,18 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
                   onChange={e => setGuideName(e.target.value)}
                   className="w-full bg-white rounded-2xl px-3 py-2 border border-slate-200/80 shadow-xs text-xs font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
                 >
-                  <option value="Mr. Nazareth Remedios">Mr. Nazareth Remedios</option>
-                  <option value="Ms. Harleen Kaur Plaha">Ms. Harleen Kaur Plaha</option>
-                  <option value="Prof. Meenal Kulkarni">Prof. Meenal Kulkarni</option>
+                  {availableGuides.length > 0 ? (
+                    availableGuides.map(g => (
+                      <option key={g.id || g.name} value={g.name}>
+                        {g.name} ({g.department || 'Faculty Guide'}{g.trackNo ? ` • Track ${g.trackNo}` : ''})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Mr. Nazareth Remedios">Mr. Nazareth Remedios</option>
+                      <option value="Ms. Harleen Kaur Plaha">Ms. Harleen Kaur Plaha</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>

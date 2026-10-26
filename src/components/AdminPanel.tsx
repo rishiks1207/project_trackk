@@ -290,7 +290,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const updated: ProjectProposal = {
       ...targetProp,
       guideName: newGuide || targetProp.guideName,
-      coordinatorName: newCoord || targetProp.coordinatorName || 'Prof. Meenal Kulkarni',
+      coordinatorName: newCoord || targetProp.coordinatorName,
       updatedAt: new Date().toISOString()
     };
 
@@ -342,7 +342,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   if (proposals.length > 0) {
                     setSelectedPropToAssign(proposals[0]);
                     setAssignedGuideName(proposals[0].guideName || (guidesList[0]?.name ?? ''));
-                    setAssignedCoordName(proposals[0].coordinatorName || (coordList[0]?.name ?? 'Prof. Meenal Kulkarni'));
+                    setAssignedCoordName(proposals[0].coordinatorName || (coordList[0]?.name ?? ''));
                     setShowAssignModal(true);
                   }
                 }}
@@ -678,23 +678,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {proposals.map(proposal => {
+                    const dbGuideNames = guidesList.map(g => g.name).filter(Boolean);
                     const guideChoices = Array.from(new Set([
-                      ...guidesList.map(g => g.name),
-                      proposal.guideName,
-                      'Prof. Nilesh Ghavate',
-                      'Prof. D. Shinde',
-                      'Prof. Aarti Sahitya',
-                      'Dr. Phiroj Shaikh',
-                      'Prof. Prasad Padval',
-                      'Prof. S. More'
+                      ...dbGuideNames,
+                      ...(proposal.guideName && !dbGuideNames.includes(proposal.guideName) ? [proposal.guideName] : [])
                     ])).filter(Boolean);
 
+                    const dbCoordNames = coordList.map(c => c.name).filter(Boolean);
                     const coordChoices = Array.from(new Set([
-                      ...coordList.map(c => c.name),
-                      proposal.coordinatorName,
-                      'Prof. Meenal Kulkarni',
-                      'Prof. Nilesh Ghavate',
-                      'Prof. D. Shinde'
+                      ...dbCoordNames,
+                      ...(proposal.coordinatorName && !dbCoordNames.includes(proposal.coordinatorName) ? [proposal.coordinatorName] : [])
                     ])).filter(Boolean);
 
                     return (
@@ -731,49 +724,72 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                         </td>
 
-                        {/* Interactive Guide Assignment */}
+                        {/* Interactive Guide Assignment - Sourced strictly from Database */}
                         <td className="p-4">
                           <div className="space-y-1.5">
                             <select
-                              value={proposal.guideName}
+                              value={proposal.guideName || ''}
                               onChange={(e) => handleAssignAllocation(proposal.id, e.target.value, proposal.coordinatorName)}
                               className="w-full max-w-[220px] px-3 py-2 bg-[#F4F5F8] border border-slate-200/80 rounded-xl font-bold text-slate-800 text-xs focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
                             >
-                              {guideChoices.map(name => (
-                                <option key={name} value={name}>
-                                  {name}
-                                </option>
-                              ))}
+                              {guideChoices.length === 0 ? (
+                                <option value="" disabled>No Faculty Guides in DB</option>
+                              ) : (
+                                guideChoices.map(name => (
+                                  <option key={name} value={name}>
+                                    {name}
+                                  </option>
+                                ))
+                              )}
                             </select>
                             <div className="text-[10px] text-slate-400 font-medium">
-                              Guide has milestone evaluation privileges
+                              Sourced from database ({guidesList.length} guides)
                             </div>
                           </div>
                         </td>
 
-                        {/* Interactive Coordinator Assignment */}
+                        {/* Interactive Coordinator Assignment - Sourced strictly from Database */}
                         <td className="p-4">
                           <div className="space-y-1.5">
                             <select
-                              value={proposal.coordinatorName || 'Prof. Meenal Kulkarni'}
+                              value={proposal.coordinatorName || ''}
                               onChange={(e) => handleAssignAllocation(proposal.id, proposal.guideName, e.target.value)}
                               className="w-full max-w-[220px] px-3 py-2 bg-[#F4F5F8] border border-slate-200/80 rounded-xl font-bold text-slate-800 text-xs focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
                             >
-                              {coordChoices.map(name => (
-                                <option key={name} value={name}>
-                                  {name}
-                                </option>
-                              ))}
+                              {coordChoices.length === 0 ? (
+                                <option value="" disabled>No Coordinators in DB</option>
+                              ) : (
+                                coordChoices.map(name => (
+                                  <option key={name} value={name}>
+                                    {name}
+                                  </option>
+                                ))
+                              )}
                             </select>
                             <div className="text-[10px] text-slate-400 font-medium">
-                              Designated project arbiter
+                              Sourced from database ({coordList.length} coordinators)
                             </div>
                           </div>
                         </td>
 
-                        {/* Direct Navigation */}
+                        {/* Direct Navigation & Quick Assign Modal Trigger */}
                         <td className="p-4 pr-6 text-right">
                           <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedPropToAssign(proposal);
+                                setAssignedGuideName(proposal.guideName || (guidesList[0]?.name ?? ''));
+                                setAssignedCoordName(proposal.coordinatorName || (coordList[0]?.name ?? ''));
+                                setShowAssignModal(true);
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 hover:border-slate-400 text-slate-800 font-bold text-[11px] shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                              title="Assign Faculty Guide & Coordinator"
+                            >
+                              <UserCog className="w-3.5 h-3.5 text-slate-700" />
+                              <span>Assign</span>
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => {
@@ -847,29 +863,49 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Assign Faculty Guide
-                </label>
-                <input
-                  type="text"
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">
+                    Assign Faculty Guide
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    {guidesList.length} guides in database
+                  </span>
+                </div>
+                <select
                   value={assignedGuideName}
                   onChange={e => setAssignedGuideName(e.target.value)}
-                  placeholder="e.g. Prof. Nilesh Ghavate"
-                  className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-bold focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
-                />
+                  className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-bold text-slate-800 text-xs focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                >
+                  <option value="">-- Select Faculty Guide from Database --</option>
+                  {guidesList.map(g => (
+                    <option key={g.id || g.name} value={g.name}>
+                      {g.name} ({g.department || 'Faculty Guide'}{g.trackNo ? ` • Track ${g.trackNo}` : ''})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Assign Project Coordinator
-                </label>
-                <input
-                  type="text"
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">
+                    Assign Project Coordinator
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    {coordList.length} coordinators in database
+                  </span>
+                </div>
+                <select
                   value={assignedCoordName}
                   onChange={e => setAssignedCoordName(e.target.value)}
-                  placeholder="e.g. Prof. Meenal Kulkarni"
-                  className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-bold focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
-                />
+                  className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-bold text-slate-800 text-xs focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                >
+                  <option value="">-- Select Project Coordinator from Database --</option>
+                  {coordList.map(c => (
+                    <option key={c.id || c.name} value={c.name}>
+                      {c.name} ({c.cohort || 'Coordinator'})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="pt-3 border-t border-slate-200 flex items-center justify-between">

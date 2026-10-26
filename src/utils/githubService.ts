@@ -19,7 +19,7 @@ export interface ParsedRepo {
  */
 export function parseGitHubRepo(input: string): ParsedRepo | null {
   if (!input) return null;
-  const clean = input.trim().replace(/\.git$/, '');
+  const clean = input.trim().replace(/\/+$/, '').replace(/\.git$/, '');
 
   // https://github.com/owner/repo
   const webMatch = clean.match(/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/);

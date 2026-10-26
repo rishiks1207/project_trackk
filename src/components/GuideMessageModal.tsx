@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Send, AlertTriangle, MessageSquare, Info, CheckCircle2 } from 'lucide-react';
 import { GuideMessage } from '../types';
+import { saveGuideMessageToFirestore } from '../utils/firestoreSync';
 
 interface GuideMessageModalProps {
   isOpen: boolean;
@@ -72,9 +73,15 @@ export const GuideMessageModal: React.FC<GuideMessageModalProps> = ({
           subject: subject.trim(),
           message: message.trim(),
           urgency,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          replies: []
         };
+      } else if (!newMsg.replies) {
+        newMsg.replies = [];
       }
+
+      // Persist directly to Cloud Firestore database
+      await saveGuideMessageToFirestore(newMsg);
 
       setSuccessMsg(`Direct notice dispatched to Group ${targetGroupNo} successfully.`);
       if (onMessageSent) onMessageSent(newMsg);

@@ -8,13 +8,48 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { ProjectProposal, HistoricalProject, StageGateMilestone, UserAccount } from '../types';
+import { ProjectProposal, HistoricalProject, StageGateMilestone, UserAccount, GuideMessage, MessageReply } from '../types';
 import { INITIAL_PROPOSALS, INITIAL_HISTORICAL_PROJECTS } from '../data/mockData';
 
 export const PROPOSALS_COLLECTION = 'proposals';
 export const HISTORICAL_COLLECTION = 'historical_theses';
 export const ARCHIVE_COLLECTION = 'project_archive';
 export const USERS_COLLECTION = 'users';
+export const MESSAGES_COLLECTION = 'guide_messages';
+
+export const INITIAL_GUIDE_MESSAGES: GuideMessage[] = [
+  {
+    id: 'msg-seed-01',
+    senderName: 'Mr. Nazareth Remedios',
+    senderRole: 'guide',
+    targetGroupNo: 5,
+    subject: 'Stage 1 Architecture Review Sign-Off & SBERT Threshold',
+    message: 'Excellent progress on the SBERT threshold pipeline and vector database schema. Ensure the UML sequence diagrams map with FastAPI endpoints and deliverable documents by Week 6.',
+    urgency: 'normal',
+    timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
+    replies: [
+      {
+        id: 'reply-seed-01',
+        senderName: 'Rishik Ezhuthachan',
+        senderRole: 'student',
+        senderEmail: 'rishiks1207@gmail.com',
+        message: 'Thank you professor! We have completed the FastAPI integration and uploaded the UML package in Stage 1 deliverable.',
+        timestamp: new Date(Date.now() - 3600000 * 2).toISOString()
+      }
+    ]
+  },
+  {
+    id: 'msg-seed-02',
+    senderName: 'Prof. Meenal Kulkarni',
+    senderRole: 'coordinator',
+    targetGroupNo: 5,
+    subject: 'Review 1 Schedule & Rubric Briefing',
+    message: 'All SE COMPS Track 7 groups must prepare their 10-slide pitch presentation for Stage Gate 0/1 review by Thursday. Check your rubrics in the dashboard.',
+    urgency: 'high',
+    timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
+    replies: []
+  }
+];
 
 export const INITIAL_INSTITUTIONAL_USERS: (UserAccount & { password?: string })[] = [
   {
@@ -155,6 +190,15 @@ export async function seedFirestoreIfEmpty(): Promise<void> {
     if (usersSnap.empty) {
       for (const u of INITIAL_INSTITUTIONAL_USERS) {
         await setDoc(doc(db, USERS_COLLECTION, String(u.id)), u);
+      }
+    }
+
+    // 4. Seed Guide Direct Messages
+    const messagesRef = collection(db, MESSAGES_COLLECTION);
+    const messagesSnap = await getDocs(messagesRef);
+    if (messagesSnap.empty) {
+      for (const m of INITIAL_GUIDE_MESSAGES) {
+        await setDoc(doc(db, MESSAGES_COLLECTION, m.id), m);
       }
     }
   } catch (err) {
@@ -374,4 +418,111 @@ export async function updateMilestoneInFirestore(
   } catch (err) {
     console.warn('Failed to update milestone in Firestore:', err);
   }
+}
+
+/**
+ * Subscribes to real-time changes in guide notices and direct messages collection.
+ */
+export function subscribeToGuideMessages(
+  callback: (messages: GuideMessage[]) => void
+): () => void {
+  try {
+    const messagesRef = collection(db, MESSAGES_COLLECTION);
+    const unsubscribe = onSnapshot(
+      messagesRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: GuideMessage[] = [];
+          snapshot.forEach((d) => {
+            list.push(d.data() as GuideMessage);
+          });
+          // Sort by timestamp descending
+          list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          callback(list);
+        } else {
+          // If empty, return initial
+          callback(INITIAL_GUIDE_MESSAGES);
+        }
+      },
+      (err) => {
+        console.warn('Firestore messages listener error:', err);
+        const cached = localStorage.getItem('dbit_guide_messages');
+        if (cached) {
+          try { callback(JSON.parse(cached)); return; } catch (e) {}
+        }
+        callback(INITIAL_GUIDE_MESSAGES);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.warn('Could not establish Firestore messages listener:', err);
+    const cached = localStorage.getItem('dbit_guide_messages');
+    if (cached) {
+      try { callback(JSON.parse(cached)); } catch (e) { callback(INITIAL_GUIDE_MESSAGES); }
+    } else {
+      callback(INITIAL_GUIDE_MESSAGES);
+    }
+    return () => {};
+  }
+}
+
+/**
+ * Saves a new guide message to Firestore (and caches to localStorage).
+ */
+export async function saveGuideMessageToFirestore(message: GuideMessage): Promise<void> {
+  try {
+    const ref = doc(db, MESSAGES_COLLECTION, message.id);
+    await setDoc(ref, message, { merge: true });
+  } catch (err) {
+    console.warn('Failed to save message to Firestore:', err);
+  }
+
+  // Backup to localStorage
+  try {
+    const cachedStr = localStorage.getItem('dbit_guide_messages');
+    const existing: GuideMessage[] = cachedStr ? JSON.parse(cachedStr) : [...INITIAL_GUIDE_MESSAGES];
+    const filtered = existing.filter(m => m.id !== message.id);
+    const updated = [message, ...filtered];
+    localStorage.setItem('dbit_guide_messages', JSON.stringify(updated));
+  } catch (e) {}
+}
+
+/**
+ * Adds a student or faculty reply to an existing guide notice in Firestore.
+ */
+export async function addReplyToGuideMessageInFirestore(
+  messageId: string,
+  reply: MessageReply
+): Promise<void> {
+  try {
+    const ref = doc(db, MESSAGES_COLLECTION, messageId);
+    const snap = await getDocs(collection(db, MESSAGES_COLLECTION));
+    let found = false;
+    for (const d of snap.docs) {
+      if (d.id === messageId) {
+        found = true;
+        const msg = d.data() as GuideMessage;
+        const updatedReplies = [...(msg.replies || []), reply];
+        await updateDoc(ref, { replies: updatedReplies });
+        break;
+      }
+    }
+    if (!found) {
+      // Create or merge
+      await setDoc(ref, { id: messageId, replies: [reply] }, { merge: true });
+    }
+  } catch (err) {
+    console.warn('Failed to add reply to message in Firestore:', err);
+  }
+
+  // Backup to localStorage
+  try {
+    const cachedStr = localStorage.getItem('dbit_guide_messages');
+    const existing: GuideMessage[] = cachedStr ? JSON.parse(cachedStr) : [...INITIAL_GUIDE_MESSAGES];
+    const target = existing.find(m => m.id === messageId);
+    if (target) {
+      target.replies = [...(target.replies || []), reply];
+      localStorage.setItem('dbit_guide_messages', JSON.stringify(existing));
+    }
+  } catch (e) {}
 }

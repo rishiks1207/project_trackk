@@ -144,6 +144,28 @@ app.post('/api/messages', async (req, res) => {
   }
 });
 
+app.post('/api/messages/:id/reply', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { senderName, senderRole, senderEmail, message } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message content is required.' });
+    }
+    const reply = {
+      id: `reply-${Date.now()}`,
+      senderName: senderName || 'User',
+      senderRole: senderRole || 'student',
+      senderEmail: senderEmail || '',
+      message: message.trim(),
+      timestamp: new Date().toISOString()
+    };
+    res.status(201).json(reply);
+  } catch (error: any) {
+    console.error('Error recording message reply:', error);
+    res.status(500).json({ error: error.message || 'Failed to record reply' });
+  }
+});
+
 // ---------------- PROPOSAL & STAGE-GATE APIS ----------------
 
 // 5. Get all proposals with stage-gates and feedback
