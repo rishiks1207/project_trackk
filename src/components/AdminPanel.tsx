@@ -116,18 +116,56 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Fetch users with resilience against static hosts
+  const mergeUserLists = (base: UserAccount[], incoming: UserAccount[]): UserAccount[] => {
+    const map = new Map<string, UserAccount>();
+    // First insert initial institutional users as baseline
+    for (const u of INITIAL_INSTITUTIONAL_USERS) {
+      const key = (u.email || '').toLowerCase().trim();
+      if (key) map.set(key, u);
+    }
+    // Then merge base (e.g. from localStorage)
+    for (const u of base) {
+      const key = (u.email || '').toLowerCase().trim() || String(u.id);
+      if (key) {
+        const existing = map.get(key);
+        map.set(key, existing ? { ...existing, ...u } : u);
+      }
+    }
+    // Then merge incoming (e.g. from server / firestore)
+    for (const u of incoming) {
+      const key = (u.email || '').toLowerCase().trim() || String(u.id);
+      if (key) {
+        const existing = map.get(key);
+        map.set(key, existing ? { ...existing, ...u } : u);
+      }
+    }
+    return Array.from(map.values());
+  };
+
+  // Fetch users with resilience against static hosts and reloads
   const fetchUsers = async () => {
     setIsLoading(true);
+    let localSaved: UserAccount[] = [];
+    try {
+      const saved = localStorage.getItem('dbit_admin_users');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localSaved = parsed;
+        }
+      }
+    } catch (e) {}
+
     try {
       const res = await fetch('/api/users');
       const contentType = res.headers.get('content-type') || '';
       if (res.ok && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setUserList(data);
+        const serverData = await res.json();
+        if (Array.isArray(serverData) && serverData.length > 0) {
+          const merged = mergeUserLists(localSaved, serverData);
+          setUserList(merged);
           try {
-            localStorage.setItem('dbit_admin_users', JSON.stringify(data));
+            localStorage.setItem('dbit_admin_users', JSON.stringify(merged));
           } catch (e) {}
           setIsLoading(false);
           return;
@@ -137,17 +175,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       console.warn('Backend API offline, using local store:', err);
     }
 
-    try {
-      const saved = localStorage.getItem('dbit_admin_users');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setUserList(parsed);
-          setIsLoading(false);
-          return;
-        }
-      }
-    } catch (e) {}
+    if (localSaved.length > 0) {
+      const merged = mergeUserLists(INITIAL_INSTITUTIONAL_USERS, localSaved);
+      setUserList(merged);
+      setIsLoading(false);
+      return;
+    }
 
     setUserList(INITIAL_INSTITUTIONAL_USERS);
     setIsLoading(false);
@@ -159,10 +192,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     // Subscribe to Firestore users collection in real time
     const unsub = subscribeToUsers((firestoreUsers) => {
       if (firestoreUsers && firestoreUsers.length > 0) {
-        setUserList(firestoreUsers);
-        try {
-          localStorage.setItem('dbit_admin_users', JSON.stringify(firestoreUsers));
-        } catch (e) {}
+        setUserList(prev => {
+          const merged = mergeUserLists(prev, firestoreUsers);
+          try {
+            localStorage.setItem('dbit_admin_users', JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
       }
     });
 
@@ -234,14 +270,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         };
       }
 
-      const updated = [created, ...userList];
+      // Preserve credentials in Firestore and local storage
+      const userWithCreds = {
+        ...created,
+        password: payload.password
+      };
+
+      const updated = [created, ...userList.filter(u => u.email.toLowerCase() !== created!.email.toLowerCase())];
       setUserList(updated);
       try {
-        localStorage.setItem('dbit_admin_users', JSON.stringify(updated));
+        const localList = [userWithCreds, ...userList.filter(u => u.email.toLowerCase() !== created!.email.toLowerCase())];
+        localStorage.setItem('dbit_admin_users', JSON.stringify(localList));
       } catch (e) {}
 
-      // Save directly to Cloud Firestore users collection
-      saveUserToFirestore(created);
+      // Save directly to Cloud Firestore users collection with full credentials
+      await saveUserToFirestore(userWithCreds);
 
       setSuccessMsg(`Successfully created ${created.role.toUpperCase()} account for ${created.name}!`);
       setShowCreateModal(false);

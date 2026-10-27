@@ -59,7 +59,8 @@ import {
   GuideFeedback,
   GitHubSyncData,
   UserAccount,
-  StudentMember
+  StudentMember,
+  GuideMessage
 } from './types';
 import { 
   INITIAL_PROPOSALS, 
@@ -70,6 +71,8 @@ import {
   seedFirestoreIfEmpty, 
   subscribeToProposals, 
   subscribeToProjectArchive,
+  subscribeToGuideMessages,
+  INITIAL_GUIDE_MESSAGES,
   saveProposalToFirestore, 
   saveArchiveProjectToFirestore,
   updateMilestoneInFirestore 
@@ -105,6 +108,7 @@ export default function App() {
   // App state
   const [proposals, setProposals] = useState<ProjectProposal[]>(INITIAL_PROPOSALS);
   const [historicalProjects, setHistoricalProjects] = useState<HistoricalProject[]>(INITIAL_HISTORICAL_PROJECTS);
+  const [guideMessages, setGuideMessages] = useState<GuideMessage[]>(INITIAL_GUIDE_MESSAGES);
   const [selectedProposalId, setSelectedProposalId] = useState<string>('prop-group-05');
   
   // Modals
@@ -169,9 +173,16 @@ export default function App() {
       }
     });
 
+    const unsubMessages = subscribeToGuideMessages((msgs) => {
+      if (msgs && msgs.length > 0) {
+        setGuideMessages(msgs);
+      }
+    });
+
     return () => {
       unsubProposals();
       unsubArchive();
+      unsubMessages();
     };
   }, []);
 
@@ -269,6 +280,20 @@ export default function App() {
   const conflictCount = proposals.filter(
     p => p.status === 'flagged_conflict' || p.status === 'coordinator_arbitration'
   ).length;
+
+  // Dynamic Guide Notices count for active user/role
+  const noticesCount = guideMessages.filter(m => {
+    if (currentRole === 'student') {
+      return !currentUser?.groupNo || m.targetGroupNo === currentUser.groupNo || m.targetGroupNo === 0;
+    }
+    if (currentRole === 'guide') {
+      return !currentUser?.name || m.senderName.toLowerCase().includes(currentUser.name.toLowerCase());
+    }
+    return true;
+  }).length;
+
+  // Dynamic Thesis Archive count
+  const thesesCount = historicalProjects.length;
 
   // Handlers
   const handleCreateProposal = (newProp: Partial<ProjectProposal>) => {
@@ -777,6 +802,8 @@ export default function App() {
             : conflictCount
         }
         proposalsCount={currentRole === 'student' ? (studentProposal ? 1 : 0) : proposals.length}
+        noticesCount={noticesCount}
+        thesesCount={thesesCount}
         onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
         onOpenGuideMessageModal={() => setIsGuideMessageModalOpen(true)}
       />
@@ -784,15 +811,17 @@ export default function App() {
       {/* Right Main Porcelain Content Viewport (Straight up edge-to-edge webapp) */}
       <div className="flex-1 bg-[#F4F5F8] p-4 sm:p-7 lg:p-8 pb-24 md:pb-8 flex flex-col overflow-y-auto min-h-screen">
           
-          {/* Top Bar with User Avatar, Pill Search, and Notification Bell */}
+          {/* Top Bar with User Avatar, Pill Search, and Working Notification Bell */}
           <FluxTopBar
             currentUser={currentUser}
             currentRole={currentRole}
             onRoleChange={handleRoleChange}
             onLogout={handleLogout}
-            onOpenPresentation={() => setIsPresentationModalOpen(true)}
+            onOpenPresentation={() => setActiveTab('gantt')}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            onNavigateTab={setActiveTab}
+            noticesCount={noticesCount}
           />
 
           {/* Page Display Header (Big Bold Title + Subtitle + Date Filter Pill) */}
@@ -858,11 +887,11 @@ export default function App() {
                         <span>Submit / Update Proposal</span>
                       </button>
                       <button
-                        onClick={() => setIsPresentationModalOpen(true)}
+                        onClick={() => setActiveTab('gantt')}
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-slate-100 text-[#18191E] text-xs font-bold border border-slate-200/80 shadow-xs transition-all cursor-pointer"
                       >
-                        <Presentation className="w-4 h-4 text-black" />
-                        <span>Review 1 Presentation</span>
+                        <Calendar className="w-4 h-4 text-black" />
+                        <span>Gantt Chart &amp; PPT Reviews</span>
                       </button>
                     </div>
                   </div>

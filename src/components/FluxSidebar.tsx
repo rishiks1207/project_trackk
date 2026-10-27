@@ -27,6 +27,8 @@ interface FluxSidebarProps {
   currentRole: UserRole;
   conflictCount: number;
   proposalsCount: number;
+  noticesCount?: number;
+  thesesCount?: number;
   onOpenSubmitModal: () => void;
   onOpenGuideMessageModal?: () => void;
 }
@@ -37,6 +39,8 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
   currentRole,
   conflictCount,
   proposalsCount,
+  noticesCount = 2,
+  thesesCount = 6,
   onOpenSubmitModal,
   onOpenGuideMessageModal
 }) => {
@@ -163,7 +167,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                   <Database className={`w-4 h-4 ${activeTab === 'repository' ? 'text-slate-950' : 'text-slate-400'}`} />
                   <span>Project Archives</span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-mono">500+</span>
+                <span className="text-[10px] text-slate-500 font-mono">{thesesCount}</span>
               </button>
             </>
           )}
@@ -251,7 +255,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                   <Database className={`w-4 h-4 ${activeTab === 'repository' ? 'text-slate-950' : 'text-slate-400'}`} />
                   <span>Project Archives</span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-mono">500+</span>
+                <span className="text-[10px] text-slate-500 font-mono">{thesesCount}</span>
               </button>
             </>
           )}
@@ -341,7 +345,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                   <Database className={`w-4 h-4 ${activeTab === 'repository' ? 'text-slate-950' : 'text-slate-400'}`} />
                   <span>Project Archives</span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-mono">500+</span>
+                <span className="text-[10px] text-slate-500 font-mono">{thesesCount}</span>
               </button>
             </>
           )}
@@ -448,7 +452,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                   <span>Guide Notices</span>
                 </div>
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300">
-                  1
+                  {noticesCount}
                 </span>
               </button>
 
@@ -465,7 +469,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                   <Database className={`w-4 h-4 ${activeTab === 'repository' ? 'text-slate-950' : 'text-slate-400'}`} />
                   <span>Thesis Archive</span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-mono">500+</span>
+                <span className="text-[10px] text-slate-500 font-mono">{thesesCount}</span>
               </button>
             </>
           )}
@@ -619,7 +623,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                         <Database className="w-4 h-4" />
                         <span>Project Archives</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">500+</span>
+                      <span className="text-[10px] text-slate-500 font-mono">{thesesCount}</span>
                     </button>
                   </>
                 )}
@@ -683,7 +687,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                         <Database className="w-4 h-4" />
                         <span>Project Archives</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">500+</span>
+                      <span className="text-[10px] text-slate-500 font-mono">{thesesCount}</span>
                     </button>
                   </>
                 )}
@@ -749,7 +753,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                         <Database className="w-4 h-4" />
                         <span>Project Archives</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">500+</span>
+                      <span className="text-[10px] text-slate-500 font-mono">{thesesCount}</span>
                     </button>
                   </>
                 )}
@@ -827,7 +831,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                         <MessageSquare className="w-4 h-4" />
                         <span>Guide Notices</span>
                       </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/10 text-slate-300">1</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/10 text-slate-300">{noticesCount}</span>
                     </button>
                     <button
                       onClick={() => handleTabSelect('repository')}
@@ -839,7 +843,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                         <Database className="w-4 h-4" />
                         <span>Thesis Archive</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">500+</span>
+                      <span className="text-[10px] text-slate-500 font-mono">{thesesCount}</span>
                     </button>
                   </>
                 )}

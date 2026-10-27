@@ -71,7 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-500/25 hover:bg-indigo-500/40 text-indigo-200 hover:text-white border border-indigo-400/30 text-[11px] font-medium transition-all backdrop-blur-md"
             >
               <Presentation className="w-3.5 h-3.5 text-indigo-300" />
-              <span>Review 1 Slides (PDF)</span>
+              <span>PPT Presentation Reviews</span>
             </button>
           </div>
         </div>

@@ -183,26 +183,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
           </div>
 
-          {/* Bottom Card: The signature Neon-Lime Card from the reference */}
+          {/* Bottom Card: The signature Neon-Lime Card */}
           <div className="mt-8 bg-[#D4F938] rounded-3xl p-5 text-slate-950 relative overflow-hidden shadow-lg">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-8 h-8 rounded-xl bg-slate-950 text-[#D4F938] flex items-center justify-center shadow-xs">
-                <Presentation className="w-4 h-4" />
+                <Rocket className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-sm font-extrabold text-slate-950 leading-tight">Review 1 Presentation</h4>
-                <span className="text-[10px] text-slate-800 font-bold">PDF Deck Available</span>
+                <h4 className="text-sm font-extrabold text-slate-950 leading-tight">Milestone Progression</h4>
+                <span className="text-[10px] text-slate-800 font-bold">14-Week Capstone Workflow</span>
               </div>
             </div>
             <p className="text-xs text-slate-800 font-medium leading-relaxed">
-              Explore the departmental Review 1 evaluation rubric and milestone guidelines.
+              Track 14-week Gantt milestones, upload Review 1 &amp; 2 PPT decks, and coordinate stage gate sign-offs directly with faculty guides.
             </p>
-            <button
-              onClick={onOpenPresentation}
-              className="w-full mt-3 py-2 px-4 rounded-full bg-slate-950 text-white hover:bg-black text-xs font-bold text-center block shadow-sm transition-all hover:scale-[1.02] cursor-pointer"
-            >
-              Open Review 1 Slides (PDF)
-            </button>
           </div>
         </div>
 

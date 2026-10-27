@@ -152,14 +152,43 @@ export const SEED_USERS = [
   }
 ];
 
-// In-memory persistent stores
-let memoryUsers: any[] = SEED_USERS.map((u, idx) => ({
-  id: idx + 1,
-  ...u,
-  assignedProjectCount: u.role === 'student' && (u as any).groupNo === 5 ? 1 : 0,
-  relatedProposalTitle: u.role === 'student' && (u as any).groupNo === 5 ? INITIAL_PROPOSALS[0]?.title : undefined,
-  createdAt: new Date().toISOString()
-}));
+// In-memory persistent stores with local disk backup
+const PERSISTED_USERS_FILE = path.join(process.cwd(), 'src', 'data', 'persisted_users.json');
+
+function loadPersistedUsers(): any[] {
+  try {
+    if (fs.existsSync(PERSISTED_USERS_FILE)) {
+      const raw = fs.readFileSync(PERSISTED_USERS_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read persisted users file:', err);
+  }
+  return SEED_USERS.map((u, idx) => ({
+    id: idx + 1,
+    ...u,
+    assignedProjectCount: u.role === 'student' && (u as any).groupNo === 5 ? 1 : 0,
+    relatedProposalTitle: u.role === 'student' && (u as any).groupNo === 5 ? INITIAL_PROPOSALS[0]?.title : undefined,
+    createdAt: new Date().toISOString()
+  }));
+}
+
+function savePersistedUsers(usersToSave: any[]) {
+  try {
+    const dir = path.dirname(PERSISTED_USERS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(PERSISTED_USERS_FILE, JSON.stringify(usersToSave, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Could not save persisted users file:', err);
+  }
+}
+
+let memoryUsers: any[] = loadPersistedUsers();
 
 let memoryProposals: any[] = JSON.parse(JSON.stringify(INITIAL_PROPOSALS));
 let memoryHistorical: any[] = JSON.parse(JSON.stringify(INITIAL_HISTORICAL_PROJECTS));
@@ -384,7 +413,7 @@ export async function createUserAccount(accountData: any) {
 
   // Memory fallback
   const newAccount = {
-    id: memoryUsers.length + 1,
+    id: memoryUsers.length > 0 ? Math.max(...memoryUsers.map(u => u.id || 0)) + 1 : 1,
     uid: `usr-${Date.now()}`,
     email: accountData.email.trim().toLowerCase(),
     password: accountData.password || 'dbit2026',
@@ -399,6 +428,7 @@ export async function createUserAccount(accountData: any) {
     createdAt: new Date().toISOString()
   };
   memoryUsers.push(newAccount);
+  savePersistedUsers(memoryUsers);
   const { password, ...safeUser } = newAccount;
   return safeUser;
 }
@@ -432,6 +462,7 @@ export async function updateUserDetails(id: number, updates: any) {
   const u = memoryUsers.find(user => user.id === id);
   if (u) {
     Object.assign(u, safeUpdates);
+    savePersistedUsers(memoryUsers);
     const { password, ...safeUser } = u;
     return safeUser;
   }
@@ -457,6 +488,7 @@ export async function updateUserPassword(id: number, newPassword: string) {
   const u = memoryUsers.find(user => user.id === id);
   if (u) {
     u.password = newPassword.trim();
+    savePersistedUsers(memoryUsers);
     const { password, ...safeUser } = u;
     return safeUser;
   }
@@ -476,6 +508,7 @@ export async function deleteUserAccount(id: number) {
   const idx = memoryUsers.findIndex(u => u.id === id);
   if (idx !== -1) {
     const deleted = memoryUsers.splice(idx, 1);
+    savePersistedUsers(memoryUsers);
     return deleted[0];
   }
   return { id };

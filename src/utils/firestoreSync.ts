@@ -216,6 +216,7 @@ export async function authenticateUserWithFirestore(
   const cleanEmail = email.trim().toLowerCase();
   const cleanPass = passwordAttempt.trim();
 
+  // 1. Check Cloud Firestore Database
   try {
     const usersRef = collection(db, USERS_COLLECTION);
     const snap = await getDocs(usersRef);
@@ -240,14 +241,35 @@ export async function authenticateUserWithFirestore(
     console.warn('Firestore database auth lookup error:', err);
   }
 
-  // Fallback to local catalog and seed user to Firestore
-  const localMatch = INITIAL_INSTITUTIONAL_USERS.find(
+  // 2. Check Local Storage admin users cache (persists accounts created by admin in current browser)
+  try {
+    const localUsersRaw = localStorage.getItem('dbit_admin_users');
+    if (localUsersRaw) {
+      const localUsers = JSON.parse(localUsersRaw);
+      if (Array.isArray(localUsers)) {
+        const localUserMatch = localUsers.find(
+          (u: any) => u.email && u.email.toLowerCase() === cleanEmail && (!u.password || u.password === cleanPass)
+        );
+        if (localUserMatch) {
+          // Sync to Firestore in background
+          saveUserToFirestore(localUserMatch);
+          const { password: _, ...safeUser } = localUserMatch;
+          return safeUser as UserAccount;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('LocalStorage users lookup notice:', e);
+  }
+
+  // 3. Fallback to built-in institutional seed users
+  const seedMatch = INITIAL_INSTITUTIONAL_USERS.find(
     u => u.email.toLowerCase() === cleanEmail && (!u.password || u.password === cleanPass)
   );
 
-  if (localMatch) {
-    saveUserToFirestore(localMatch);
-    const { password: _, ...safeUser } = localMatch;
+  if (seedMatch) {
+    saveUserToFirestore(seedMatch);
+    const { password: _, ...safeUser } = seedMatch;
     return safeUser as UserAccount;
   }
 
@@ -377,15 +399,35 @@ export async function saveArchiveProjectToFirestore(project: HistoricalProject):
  */
 export async function saveUserToFirestore(user: UserAccount & { password?: string }): Promise<void> {
   try {
-    const ref = doc(db, USERS_COLLECTION, String(user.id));
+    const docId = user.uid || String(user.id);
+    const ref = doc(db, USERS_COLLECTION, docId);
     await setDoc(ref, user, { merge: true });
   } catch (err) {
     console.warn('Failed to save user to Firestore:', err);
   }
+
+  // Always maintain local storage sync so page refreshes and offline re-logins never lose the user
+  try {
+    const localUsersRaw = localStorage.getItem('dbit_admin_users');
+    let localUsers: any[] = localUsersRaw ? JSON.parse(localUsersRaw) : [];
+    if (!Array.isArray(localUsers)) localUsers = [];
+    const existingIdx = localUsers.findIndex(u => 
+      (u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase()) || 
+      (u.id && user.id && u.id === user.id)
+    );
+    if (existingIdx !== -1) {
+      localUsers[existingIdx] = { ...localUsers[existingIdx], ...user };
+    } else {
+      localUsers.unshift(user);
+    }
+    localStorage.setItem('dbit_admin_users', JSON.stringify(localUsers));
+  } catch (e) {
+    // ignore
+  }
 }
 
 /**
- * Deletes a user account from Firestore.
+ * Deletes a user account from Firestore and local cache.
  */
 export async function deleteUserFromFirestore(userId: number | string): Promise<void> {
   try {
@@ -393,6 +435,19 @@ export async function deleteUserFromFirestore(userId: number | string): Promise<
     await deleteDoc(ref);
   } catch (err) {
     console.warn('Failed to delete user from Firestore:', err);
+  }
+
+  try {
+    const localUsersRaw = localStorage.getItem('dbit_admin_users');
+    if (localUsersRaw) {
+      let localUsers: any[] = JSON.parse(localUsersRaw);
+      if (Array.isArray(localUsers)) {
+        localUsers = localUsers.filter(u => u.id !== userId && u.uid !== String(userId));
+        localStorage.setItem('dbit_admin_users', JSON.stringify(localUsers));
+      }
+    }
+  } catch (e) {
+    // ignore
   }
 }
 
