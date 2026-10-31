@@ -148,7 +148,7 @@ export const HistoricalRepository: React.FC<HistoricalRepositoryProps> = ({
               <span>Pre-Submission Originality Sandbox</span>
             </span>
             <span className="text-[11px] text-white/60">
-              Type any project idea to check instant SBERT similarity before drafting
+              Type any project idea to check instant topic similarity before drafting
             </span>
           </div>
           <div className="flex flex-wrap sm:flex-nowrap gap-2">
@@ -184,8 +184,8 @@ export const HistoricalRepository: React.FC<HistoricalRepositoryProps> = ({
                 </span>
               </div>
               <div className="font-mono text-[11px] flex gap-3 text-white">
-                <span>SBERT: {(quickTestResult.sbertScore * 100).toFixed(1)}%</span>
-                <span>TF-IDF: {(quickTestResult.tfidfScore * 100).toFixed(1)}%</span>
+                <span>Topic: {(quickTestResult.sbertScore * 100).toFixed(1)}%</span>
+                <span>Text: {(quickTestResult.tfidfScore * 100).toFixed(1)}%</span>
               </div>
             </div>
           )}
@@ -453,7 +453,7 @@ export const HistoricalRepository: React.FC<HistoricalRepositoryProps> = ({
                   rows={3}
                   value={newAbstract}
                   onChange={e => setNewAbstract(e.target.value)}
-                  placeholder="Detailed synopsis of technical implementation, novelty, and outcomes..."
+                  placeholder="Detailed synopsis of technical implementation, originality, and outcomes..."
                   className="w-full px-3.5 py-2 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-hidden focus:border-[#D4F938]"
                 />
               </div>

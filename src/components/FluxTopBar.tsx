@@ -67,7 +67,7 @@ export const FluxTopBar: React.FC<FluxTopBarProps> = ({
           id: 'notif-g2',
           type: 'stage',
           title: 'Exp 5 Code Deliverable',
-          description: 'Group 05 synchronized GitHub PR for SBERT duplicate screening.',
+          description: 'Group 05 synchronized GitHub PR for similarity screening.',
           time: '2h ago',
           isRead: false,
           actionTab: 'stages'

@@ -169,8 +169,8 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
 
   if (!isOpen) return null;
 
-  // Real-time similarity scan
-  const similarityReport = scanProposalSimilarity(title, abstract, historicalProjects);
+  // Real-time similarity scan across title, abstract, and problem statement
+  const similarityReport = scanProposalSimilarity(title, abstract, historicalProjects, problemStatement);
   const originalityPercent = Math.max(0, Math.min(100, Math.round((1 - similarityReport.overallScore) * 100)));
   const simPercent = Math.round(similarityReport.overallScore * 100);
 
@@ -191,9 +191,9 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
     } else {
       setTitle('Centralized Project Proposal & Progress Tracking Portal (DBIT ProjectTrack)');
       setDomain('AI/ML');
-      setAbstract('DBIT ProjectTrack automates topic screening, faculty review, and milestone tracking. Featuring automated real-time NLP pre-screening using Sentence-BERT (SBERT) contextual embeddings and TF-IDF cosine similarity with a threshold of 0.75, it flags paraphrased duplicate ideas. An expert-in-the-loop conflict queue provides side-by-side pitch defense evaluation instead of first-come allocation.');
-      setProblemStatement('Manual Google Sheets and WhatsApp submissions cause 79.2% topic overlap and 81.8% stage gate confusion across SE/TE cohorts.');
-      setTechStackInput('Sentence-BERT, TF-IDF, React 19, TypeScript, GitHub API');
+      setAbstract('DBIT ProjectTrack automates topic screening, faculty review, and milestone tracking. Featuring automated real-time duplicate screening with similarity checking, it flags duplicate ideas. An expert conflict queue provides side-by-side pitch defense evaluation.');
+      setProblemStatement('Manual Google Sheets and WhatsApp submissions cause topic overlap and stage gate confusion across SE/TE cohorts.');
+      setTechStackInput('React 19, TypeScript, GitHub API');
     }
   };
 
@@ -258,10 +258,10 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
             <div>
               <div className="flex items-center gap-2">
                 <span className="bg-[#D4F938] text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  SBERT Active
+                  Similarity Check Active
                 </span>
                 <span className="text-slate-400 text-[11px] font-mono">
-                  Cutoff: 0.75
+                  Cutoff: 75%
                 </span>
               </div>
               <h2 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
@@ -347,15 +347,15 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
                 </div>
               </div>
 
-              {/* Sub-scores: SBERT (Lilac) vs TF-IDF (Obsidian) */}
+              {/* Sub-scores: Topic Similarity vs Text Match */}
               <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-200/60 text-xs font-mono">
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase">SBERT (Dense)</span>
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Topic Similarity</span>
                   <span className="font-black text-slate-900">{(similarityReport.sbertScore * 100).toFixed(1)}%</span>
                 </div>
                 <div className="h-6 w-px bg-slate-200" />
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase">TF-IDF (Lexical)</span>
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Text Match</span>
                   <span className="font-black text-slate-900">{(similarityReport.tfidfScore * 100).toFixed(1)}%</span>
                 </div>
               </div>

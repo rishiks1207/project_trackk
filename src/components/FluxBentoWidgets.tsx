@@ -584,12 +584,12 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
           <div className="relative h-48 w-full flex items-center justify-center my-2">
             <div className="absolute left-4 sm:left-8 top-4 w-32 h-32 rounded-full bg-[#C6B5FD] flex flex-col items-center justify-center text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105">
               <span className="text-xl font-black tracking-tight font-mono">384</span>
-              <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">sbert</span>
+              <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">topic match</span>
             </div>
 
             <div className="absolute right-4 sm:right-8 top-10 w-28 h-28 rounded-full bg-[#18191E] flex flex-col items-center justify-center text-white shadow-md transition-transform duration-300 group-hover:scale-105 group-hover:-translate-y-1">
               <span className="text-lg font-black tracking-tight font-mono text-white">144</span>
-              <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">lexical</span>
+              <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">text match</span>
             </div>
 
             <div className="absolute bottom-1 w-24 h-24 rounded-full bg-[#D4F938] flex flex-col items-center justify-center text-black shadow-md z-10 transition-transform duration-300 group-hover:scale-110">
@@ -767,7 +767,7 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
             </span>
             <span className="text-lg font-bold text-slate-400">%</span>
             <span className="bg-[#D4F938] text-black font-extrabold text-[11px] px-2.5 py-0.5 rounded-full shadow-xs ml-1">
-              Passed SBERT
+              Topic Cleared
             </span>
           </div>
 

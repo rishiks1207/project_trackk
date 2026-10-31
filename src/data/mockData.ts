@@ -112,10 +112,10 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
     cohort: 'SE COMPS C (Batch A)',
     title: 'Centralized Project Proposal & Progress Tracking Portal (DBIT ProjectTrack)',
     domain: 'AI/ML',
-    abstract: 'DBIT ProjectTrack is a centralized web portal that automates topic screening, faculty review, and milestone tracking for undergraduate project courses. Featuring automated real-time NLP pre-screening using Sentence-BERT (SBERT) contextual embeddings and TF-IDF cosine similarity with a threshold of 0.75, it flags paraphrased duplicate ideas. An expert-in-the-loop conflict queue provides side-by-side pitch defense evaluation instead of first-come allocation, paired with a visual stage-gate tracker and GitHub repository sync.',
+    abstract: 'DBIT ProjectTrack is a centralized web portal that automates topic screening, faculty review, and milestone tracking for undergraduate project courses. Featuring automated real-time similarity pre-screening with a threshold of 0.75, it flags duplicate ideas. An expert-in-the-loop conflict queue provides side-by-side pitch defense evaluation instead of first-come allocation, paired with a visual stage-gate tracker and GitHub repository sync.',
     problemStatement: 'To develop a web-based centralized portal for students and project guides that provides automated detection of duplicate or overlapping project topics, a searchable archive of approved topics, and real-time approval, feedback, and stage tracking with deadline reminders, thereby reducing overlapping projects and the delays and confusion caused by slow, scattered, and untracked feedback.',
     objectives: [
-      'Automated NLP duplicate detection: flag overlapping titles and abstracts at submission using SBERT and TF-IDF.',
+      'Automated duplicate detection: flag overlapping titles and abstracts at submission using similarity screening.',
       'Side-by-side pitch defense: faculty merit review for contested topics instead of first-come allocation.',
       'Searchable topic archive: pre-submission visibility into past approved projects.',
       'Stage-gate progress tracking: real-time milestones from approval through testing.',
@@ -124,7 +124,7 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
     scope: {
       inScope: [
         'Department-level proposal submission',
-        'Semantic duplicate analysis with SBERT and TF-IDF',
+        'Duplicate analysis and similarity check',
         'Faculty resolution queue & side-by-side pitch defense matrix',
         'Milestone tracking and automated reminder alerts for SE/TE courses',
         'GitHub repository sync for stage deliverables'
@@ -135,7 +135,7 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
         'Multi-institute university deployment'
       ]
     },
-    techStack: ['Sentence-BERT', 'TF-IDF', 'React 19', 'TypeScript', 'Tailwind CSS', 'GitHub REST API', 'Gemini AI'],
+    techStack: ['Similarity Engine', 'React 19', 'TypeScript', 'Tailwind CSS', 'GitHub REST API', 'Gemini AI'],
     teamMembers: [
       { name: 'Apoorvadeep Sinha', rollNo: '01', email: 'apoorvadeep.sinha@dbit.in', isLeader: true },
       { name: 'Ron Barretto', rollNo: '05', email: 'ron.barretto@dbit.in' },
@@ -151,13 +151,13 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
       sbertScore: 0.22,
       tfidfScore: 0.12,
       isConflict: false,
-      explanation: 'HIGH ORIGINALITY (82%): Distinctive topic proposal. Novel hybrid SBERT + expert-in-the-loop stage gate architecture.'
+      explanation: 'HIGH ORIGINALITY (82%): Distinctive topic proposal. Clean stage-gate architecture.'
     },
     pitchDefense: {
-      content: 'While legacy systems (e.g. Sharma 2021) perform static keyword matching, DBIT ProjectTrack introduces Sentence-BERT dense contextual embeddings that catch semantic paraphrasing even when students reword titles. Additionally, our Expert-in-the-Loop Conflict Queue resolves topic clashes through merit-based 200-word pitch defenses rather than unfair first-come first-serve locking.',
+      content: 'While legacy systems perform static keyword matching, DBIT ProjectTrack introduces contextual similarity screening that catches rephrased titles. Additionally, our Expert-in-the-Loop Conflict Queue resolves topic clashes through merit-based pitch defenses rather than unfair first-come first-serve locking.',
       submittedAt: '2026-09-15T10:30:00Z',
-      keyDifferentiator: 'SBERT contextual semantic embedding with 0.75 conflict threshold + Side-by-side pitch review',
-      targetStack: 'React + TypeScript + SBERT + GitHub Sync',
+      keyDifferentiator: 'Automated similarity screening with 0.75 conflict threshold + Side-by-side pitch review',
+      targetStack: 'React + TypeScript + Similarity Screening + GitHub Sync',
       expectedDeliverable: 'Full working portal deployed for DBIT SE COMPS with live GitHub verification'
     },
     feedbackHistory: [
@@ -168,8 +168,8 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
         timestamp: '2026-09-16T14:20:00Z',
         stage: 'Topic Approval',
         status: 'approved',
-        remarks: 'Topic proposal is well-scoped and addresses a pressing problem in our department. Architecture and SBERT threshold approach (0.75) approved for SE Mini Project Track 7.',
-        actionItems: ['Finalize UML Activity and State Machine diagrams for Exp 4', 'Verify SBERT vs TF-IDF false positive rates']
+        remarks: 'Topic proposal is well-scoped and addresses a pressing problem in our department. Architecture and similarity threshold approach (0.75) approved for SE Mini Project Track 7.',
+        actionItems: ['Finalize UML Activity and State Machine diagrams for Exp 4', 'Verify similarity algorithm performance']
       },
       {
         id: 'fb-02',
@@ -178,7 +178,7 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
         timestamp: '2026-10-02T11:00:00Z',
         stage: 'Review 1 Evaluation',
         status: 'approved',
-        remarks: 'Review 1 completed with high marks. Empathy mapping, literature matrix (Sharma, Patel, Dev et al.), and UML 2.5 models align with DBIT project guidelines.',
+        remarks: 'Review 1 completed with high marks. Empathy mapping, literature matrix, and UML 2.5 models align with DBIT project guidelines.',
         actionItems: ['Integrate live GitHub repository sync for Stage 2 development sprint', 'Ensure responsive UI on student and faculty viewports']
       }
     ],
@@ -205,7 +205,7 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
         status: 'approved',
         dueDate: '2026-08-30',
         submissionLink: 'https://drive.google.com/dbit-exp2',
-        submissionNotes: 'Literature matrix of 5 papers (Sharma 2021, Patel 2023, Dev 2024, Gupta 2022, Joshi 2020) and 5 app comparison.',
+        submissionNotes: 'Literature matrix of 5 papers and app benchmark comparison completed.',
         submissionDate: '2026-08-29',
         guideApprovedBy: 'Mr. Nazareth Remedios',
         guideApprovedDate: '2026-09-01',
@@ -241,13 +241,13 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
       },
       {
         id: 'sg-05',
-        title: 'Exp 5: NLP Engine Development (SBERT & Cosine)',
+        title: 'Exp 5: Similarity Engine Development',
         phase: 'stage2_dev',
         weekRange: 'W9 - W11',
         status: 'submitted',
         dueDate: '2026-10-25',
         submissionLink: 'https://github.com/rishiks1207/dbit-project-track',
-        submissionNotes: 'Hybrid Sentence-BERT and TF-IDF similarity engine implemented with unit tests passing at 0.75 threshold.',
+        submissionNotes: 'Automated similarity screening engine implemented with unit tests passing at 0.75 threshold.',
         submissionDate: '2026-10-20',
         deliverableType: 'github_pr'
       },
@@ -291,7 +291,7 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
       latestCommits: [
         {
           sha: 'a7c1409',
-          message: 'feat: real-time SBERT contextual similarity screening with 0.75 threshold',
+          message: 'feat: real-time contextual similarity screening with 0.75 threshold',
           author: 'Rishik Ezhuthachan',
           date: '2026-10-22T19:30:00Z',
           url: 'https://github.com/rishiks1207/dbit-project-track/commit/a7c1409'
@@ -460,7 +460,7 @@ export const GANTT_SCHEDULE = [
   { exp: 'Exp 3', title: 'User Survey & Problem Formulation', weeks: 'W5 - W6', startWeek: 5, endWeek: 6, status: 'Completed', owner: 'Team' },
   { exp: 'Exp 4', title: 'UML Diagrams & Architecture Design', weeks: 'W7 - W8', startWeek: 7, endWeek: 8, status: 'Completed', owner: 'Team' },
   { exp: '★ Milestone', title: 'Progress Review 1 Evaluation', weeks: 'W8*', startWeek: 8, endWeek: 8, status: 'Completed (Pass)', owner: 'Evaluation Committee' },
-  { exp: 'Exp 5', title: 'NLP Engine Development (SBERT & FastAPI)', weeks: 'W9 - W11', startWeek: 9, endWeek: 11, status: 'In Progress', owner: 'Team' },
+  { exp: 'Exp 5', title: 'Similarity Engine Development', weeks: 'W9 - W11', startWeek: 9, endWeek: 11, status: 'In Progress', owner: 'Team' },
   { exp: 'Exp 6', title: 'Web Portal UI (Student, Guide & Coordinator)', weeks: 'W10 - W12', startWeek: 10, endWeek: 12, status: 'Active Sprint', owner: 'Team' },
   { exp: 'Exp 7', title: 'System Integration & Final Evaluation (Review 2)', weeks: 'W12 - W14', startWeek: 12, endWeek: 14, status: 'Upcoming', owner: 'Team + Committee' }
 ];

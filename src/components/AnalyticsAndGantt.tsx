@@ -35,7 +35,7 @@ export const AnalyticsAndGantt: React.FC = () => {
               Survey Analytics, 14-Week Gantt &amp; Literature Benchmark
             </h2>
             <p className="text-xs text-zinc-500">
-              Empirical grounding for real-time SBERT similarity filtering and expert-in-the-loop stage gates (Slides 7, 9, 11, 15)
+              Empirical grounding for real-time similarity filtering and expert-in-the-loop stage gates (Slides 7, 9, 11, 15)
             </p>
           </div>
 

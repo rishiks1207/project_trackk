@@ -177,7 +177,7 @@ export const StageGateTracker: React.FC<StageGateTrackerProps> = ({
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 text-[11px] font-mono px-3 py-1 rounded-full bg-[#D4F938] text-black font-extrabold uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-                UML 2.5 Stage-Gate Tracking
+                Stage-Gate Milestone Progression
               </span>
               <span className="text-xs text-white/60">
                 Project ID: <strong className="text-white font-mono">{proposal.projectId || 'DBIT-SE-2026-T7-G05'}</strong>

@@ -1412,7 +1412,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onChange={e => setRole(e.target.value as any)}
                     className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-bold text-slate-800 focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
                   >
-                    <option value="student">Student (Submit &amp; Cross-Check with SBERT)</option>
+                    <option value="student">Student (Submit &amp; Similarity Check)</option>
                     <option value="guide">Faculty Guide (Review &amp; Sign-off)</option>
                     <option value="coordinator">Project Coordinator (Arbitrate &amp; Award)</option>
                     <option value="admin">Administrator (Account &amp; DB Manager)</option>

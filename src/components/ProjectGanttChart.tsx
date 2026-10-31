@@ -76,7 +76,7 @@ const DEFAULT_14_WEEK_SCHEDULE: MilestoneScheduleItem[] = [
   {
     id: 'exp-1',
     expNumber: 1,
-    title: 'Exp 1: Project Identification & SBERT Duplicate Screening',
+    title: 'Exp 1: Project Identification & Similarity Screening',
     phase: 'Phase 1: Initiation',
     startWeek: 1,
     endWeek: 2,
@@ -215,7 +215,7 @@ export const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({
       uploadedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
       uploadedBy: 'Rishik Ezhuthachan',
       presenters: 'Rishik E., Apoorvadeep S., Ron B., Aryan G.',
-      notes: 'Covers SBERT duplicate check validation (0.18), UML sequence diagrams, FastAPI schemas, and Git milestones.',
+      notes: 'Covers similarity check validation (0.18), UML sequence diagrams, FastAPI schemas, and Git milestones.',
       status: 'approved',
       score: 23,
       maxScore: 25,
@@ -967,7 +967,7 @@ export const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({
                   <div className="p-3 bg-[#F4F5F8] rounded-xl border border-slate-200/60 text-[11px] text-slate-600">
                     <strong className="text-black font-bold">Focus Area: </strong>
                     {isReview1 
-                      ? 'Topic novelty validation, SRS compliance, UML models (Class, Sequence, State) & detailed DB schema.'
+                      ? 'Topic originality validation, SRS compliance, UML models (Class, Sequence, State) & detailed DB schema.'
                       : 'Working prototype demo, automated test coverage, production deployment, and final Viva examination.'}
                   </div>
 
@@ -1183,7 +1183,7 @@ export const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({
                   rows={3}
                   value={uploadNotes}
                   onChange={e => setUploadNotes(e.target.value)}
-                  placeholder="Summarize key diagrams, SBERT threshold validation, technology stack demo points..."
+                  placeholder="Summarize key diagrams, similarity threshold validation, technology stack demo points..."
                   className="w-full bg-white rounded-xl px-3.5 py-2.5 border border-slate-300 text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
                 />
               </div>

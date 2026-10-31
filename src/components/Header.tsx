@@ -95,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
               </h1>
               <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-800 border border-blue-500/20 backdrop-blur-xs">
                 <Cpu className="w-2.5 h-2.5 text-blue-600" />
-                <span>SBERT + TF-IDF 0.75</span>
+                <span>Similarity Check</span>
               </span>
             </div>
             <p className="text-[11px] text-slate-500 tracking-tight hidden sm:block">
@@ -368,7 +368,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <FileText className="w-3.5 h-3.5 text-blue-600" />
-              <span>My Project &amp; SBERT</span>
+              <span>My Project Proposals</span>
             </button>
 
             <button

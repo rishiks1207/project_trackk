@@ -124,102 +124,94 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   DBIT <span className="text-[#D4F938]">ProjectTrack</span>
                 </span>
                 <span className="text-[10px] text-slate-400 block font-semibold tracking-wider uppercase">
-                  Centralized Proposal &amp; Stage-Gate Portal
+                  Project Allocation &amp; Progress Portal
                 </span>
               </div>
             </div>
 
             {/* Intro Copy */}
-            <div className="space-y-2 mb-6">
+            <div className="space-y-1.5 mb-6">
               <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug">
-                Academic Project Governance with AI Novelty Verification
+                Academic Project Governance
               </h2>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Sentence-BERT duplicate screening across 500+ past theses, 14-week individual Gantt schedules, and role-authoritative controllers.
+                Topic similarity screening, project milestone tracking, and role-based management.
               </p>
             </div>
 
             {/* 4 Role Controller Quick Badges */}
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3 hover:bg-white/10 transition-colors">
-                <div className="w-7 h-7 rounded-xl bg-white/10 text-[#D4F938] flex items-center justify-center shrink-0 mt-0.5">
-                  <ShieldCheck className="w-4 h-4" />
+            <div className="space-y-2 text-xs">
+              <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+                <div className="w-6 h-6 rounded-lg bg-white/10 text-[#D4F938] flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <span className="font-bold text-white text-xs block">Admin Authority</span>
-                  <span className="text-[11px] text-slate-400">Account management &amp; Cloud SQL PostgreSQL relations.</span>
+                  <span className="font-bold text-white text-xs block">Admin</span>
+                  <span className="text-[11px] text-slate-400">User accounts &amp; batch allocation</span>
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3 hover:bg-white/10 transition-colors">
-                <div className="w-7 h-7 rounded-xl bg-white/10 text-[#C6B5FD] flex items-center justify-center shrink-0 mt-0.5">
-                  <UserCheck className="w-4 h-4" />
+              <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+                <div className="w-6 h-6 rounded-lg bg-white/10 text-[#C6B5FD] flex items-center justify-center shrink-0">
+                  <UserCheck className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <span className="font-bold text-white text-xs block">Faculty Guide Authority</span>
-                  <span className="text-[11px] text-slate-400">Milestone sign-off stamps &amp; direct student text notices.</span>
+                  <span className="font-bold text-white text-xs block">Faculty Guide</span>
+                  <span className="text-[11px] text-slate-400">Milestone approvals &amp; notices</span>
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3 hover:bg-white/10 transition-colors">
-                <div className="w-7 h-7 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0 mt-0.5">
-                  <Sparkles className="w-4 h-4" />
+              <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+                <div className="w-6 h-6 rounded-lg bg-white/10 text-white flex items-center justify-center shrink-0">
+                  <Sparkles className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <span className="font-bold text-white text-xs block">Coordinator Authority</span>
-                  <span className="text-[11px] text-slate-400">Topic arbitration queue &amp; pitch defense evaluation.</span>
+                  <span className="font-bold text-white text-xs block">Coordinator</span>
+                  <span className="text-[11px] text-slate-400">Topic arbitration &amp; pitch defense</span>
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3 hover:bg-white/10 transition-colors">
-                <div className="w-7 h-7 rounded-xl bg-white/10 text-[#D4F938] flex items-center justify-center shrink-0 mt-0.5">
-                  <GraduationCap className="w-4 h-4" />
+              <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+                <div className="w-6 h-6 rounded-lg bg-white/10 text-[#D4F938] flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <span className="font-bold text-white text-xs block">Student Controller</span>
-                  <span className="text-[11px] text-slate-400">Submit proposals, pick DB team members &amp; track Gantt chart.</span>
+                  <span className="font-bold text-white text-xs block">Student</span>
+                  <span className="text-[11px] text-slate-400">Proposals, team members &amp; Gantt progress</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Bottom Card: The signature Neon-Lime Card */}
-          <div className="mt-8 bg-[#D4F938] rounded-3xl p-5 text-slate-950 relative overflow-hidden shadow-lg">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-slate-950 text-[#D4F938] flex items-center justify-center shadow-xs">
-                <Rocket className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-sm font-extrabold text-slate-950 leading-tight">Milestone Progression</h4>
-                <span className="text-[10px] text-slate-800 font-bold">14-Week Capstone Workflow</span>
-              </div>
+          {/* Bottom Card */}
+          <div className="mt-6 bg-[#D4F938] rounded-2xl p-4 text-slate-950 shadow-md">
+            <div className="flex items-center gap-2 mb-1">
+              <Rocket className="w-4 h-4 text-slate-950" />
+              <h4 className="text-xs font-bold text-slate-950">Milestone Progression</h4>
             </div>
-            <p className="text-xs text-slate-800 font-medium leading-relaxed">
-              Track 14-week Gantt milestones, upload Review 1 &amp; 2 PPT decks, and coordinate stage gate sign-offs directly with faculty guides.
+            <p className="text-[11px] text-slate-900 font-medium leading-normal">
+              Track 14-week project milestones, upload presentation decks, and request guide approvals.
             </p>
           </div>
         </div>
 
         {/* Right Main Porcelain Sign-in Card */}
-        <div className="flex-1 bg-[#F4F5F8] p-6 sm:p-10 flex flex-col justify-between">
+        <div className="flex-1 bg-[#F4F5F8] p-6 sm:p-8 flex flex-col justify-between">
           <div>
             {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div className="flex items-center justify-between mb-5">
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
-                  Institutional Access Gate
-                </span>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">
                   Sign in to ProjectTrack
                 </h1>
-                <p className="text-xs text-slate-500 font-medium mt-1">
-                  Select a quick role preset or enter your institutional credentials.
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Select a quick role preset or enter your credentials.
                 </p>
               </div>
 
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-slate-800 text-[11px] font-bold border border-slate-200/80 shadow-xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Cloud SQL Live</span>
+                <span>Database Online</span>
               </div>
             </div>
 
@@ -334,7 +326,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 disabled={isLoading}
                 className="w-full mt-2 py-3.5 px-6 rounded-full bg-[#18191E] hover:bg-black disabled:opacity-50 text-white font-extrabold text-xs shadow-lg transition-all duration-200 hover:scale-[1.01] flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>{isLoading ? 'Verifying with PostgreSQL...' : 'Sign in to Controller'}</span>
+                <span>{isLoading ? 'Signing in...' : 'Sign in to Controller'}</span>
                 <ArrowRight className="w-4 h-4 text-[#D4F938]" />
               </button>
             </form>

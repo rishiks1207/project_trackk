@@ -32,7 +32,7 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
   onSendReminder
 }) => {
   const [remarks, setRemarks] = useState('');
-  const [stage, setStage] = useState('Stage 2: Development & SBERT Engine');
+  const [stage, setStage] = useState('Stage 2: Development & Similarity Engine');
   const [status, setStatus] = useState<GuideFeedback['status']>('comment');
   const [actionItemInput, setActionItemInput] = useState('');
   const [actionItems, setActionItems] = useState<string[]>([]);
@@ -116,7 +116,7 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
           <div className="flex items-center gap-2 text-slate-800">
             <Bell className="w-4 h-4 text-black shrink-0" />
             <span>
-              Pending Guide Sign-Off: <strong className="text-black">{proposal.guideName}</strong> (Exp 5 NLP SBERT Engine)
+              Pending Guide Sign-Off: <strong className="text-black">{proposal.guideName}</strong> (Similarity Screening)
             </span>
           </div>
 
@@ -222,7 +222,7 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
                 >
                   <option value="Topic Approval">Topic Approval</option>
                   <option value="Stage 1: Exp 1-4 Design">Stage 1: Exp 1-4 Design</option>
-                  <option value="Stage 2: Development & SBERT Engine">Stage 2: Development & SBERT Engine</option>
+                  <option value="Stage 2: Development & Similarity Engine">Stage 2: Development & Similarity Engine</option>
                   <option value="Stage 3: Testing & Evaluation">Stage 3: Testing & Evaluation</option>
                   <option value="Review 2 Committee Sign-Off">Review 2 Committee Sign-Off</option>
                 </select>
@@ -253,7 +253,7 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
                 rows={3}
                 value={remarks}
                 onChange={e => setRemarks(e.target.value)}
-                placeholder="Log specific guidance on technical architecture, algorithm optimizations, or deliverables..."
+                placeholder="Log specific guidance on technical architecture, system design, or deliverables..."
                 className="w-full px-3.5 py-2 border border-slate-200 rounded-xl bg-[#F4F5F8] text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
               />
             </div>
@@ -267,7 +267,7 @@ export const FeedbackLogModal: React.FC<FeedbackLogModalProps> = ({
                   type="text"
                   value={actionItemInput}
                   onChange={e => setActionItemInput(e.target.value)}
-                  placeholder="e.g. Include cosine similarity ROC curve in Exp 5 report"
+                  placeholder="e.g. Include evaluation metric charts in Exp 5 report"
                   className="flex-1 px-3.5 py-2 border border-slate-200 rounded-xl bg-[#F4F5F8] text-xs"
                 />
                 <button

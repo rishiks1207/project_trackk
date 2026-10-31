@@ -117,10 +117,11 @@ export default function App() {
   const [isPresentationModalOpen, setIsPresentationModalOpen] = useState(false);
   const [isGuideMessageModalOpen, setIsGuideMessageModalOpen] = useState(false);
 
-  // Status & Domain Filters for Proposals list
+  // Status, Domain & Sorting Filters for Proposals list
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [domainFilter, setDomainFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'newest' | 'novelty' | 'alphabetical'>('newest');
   const [expandedProposalId, setExpandedProposalId] = useState<string | null>(null);
 
   // Toast notification
@@ -703,6 +704,23 @@ export default function App() {
     }
 
     return true;
+  });
+
+  // Sorted proposals list by Newest, Highest Novelty, or Alphabetical
+  const sortedProposals = [...filteredProposals].sort((a, b) => {
+    if (sortBy === 'novelty') {
+      const noveltyA = 1 - (a.similarityData?.overallScore ?? 0.5);
+      const noveltyB = 1 - (b.similarityData?.overallScore ?? 0.5);
+      return noveltyB - noveltyA; // Highest novelty first
+    }
+    if (sortBy === 'alphabetical') {
+      return a.title.localeCompare(b.title);
+    }
+    // Default 'newest'
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeA !== timeB) return timeB - timeA;
+    return (b.projectId || b.id).localeCompare(a.projectId || a.id);
   });
 
   // If user is not logged in, render dedicated LoginPage
@@ -1458,28 +1476,48 @@ export default function App() {
           {/* ===================== VIEW 2: PROPOSALS (FULL SCREENING LIST) ===================== */}
           {activeTab === 'proposals' && (
             <div className="space-y-5">
-              {/* Quick Status Filters */}
+              {/* Quick Status Filters & Sort Dropdown */}
               <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-[24px] p-4 shadow-xs border border-slate-200/80">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
-                  {[
-                    { id: 'all', label: `All (${proposals.length})` },
-                    { id: 'approved', label: `Approved (${proposals.filter(p => p.status === 'approved').length})` },
-                    { id: 'conflicts', label: `Conflicts (${conflictCount})` },
-                    { id: 'under_review', label: 'Under Review' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setStatusFilter(tab.id)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                        statusFilter === tab.id
-                          ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
-                          : 'bg-[#F4F5F8] text-slate-700 hover:bg-slate-200'
-                      }`}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
+                    {[
+                      { id: 'all', label: `All (${proposals.length})` },
+                      { id: 'approved', label: `Approved (${proposals.filter(p => p.status === 'approved').length})` },
+                      { id: 'conflicts', label: `Conflicts (${conflictCount})` },
+                      { id: 'under_review', label: 'Under Review' }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setStatusFilter(tab.id)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          statusFilter === tab.id
+                            ? 'bg-[#18191E] text-[#D4F938] shadow-xs'
+                            : 'bg-[#F4F5F8] text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Sorting Dropdown Menu */}
+                  <div className="flex items-center gap-2 bg-[#F4F5F8] px-3.5 py-1.5 rounded-full border border-slate-200/80">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                    <label htmlFor="proposal-sort-select" className="text-xs font-bold text-slate-500 shrink-0">
+                      Sort:
+                    </label>
+                    <select
+                      id="proposal-sort-select"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as 'newest' | 'novelty' | 'alphabetical')}
+                      className="bg-transparent text-xs font-bold text-slate-900 border-none focus:outline-hidden cursor-pointer pr-1"
                     >
-                      {tab.label}
-                    </button>
-                  ))}
+                      <option value="newest">Newest</option>
+                      <option value="novelty">Highest Novelty</option>
+                      <option value="alphabetical">Alphabetical</option>
+                    </select>
+                  </div>
                 </div>
 
                 {currentRole === 'student' && (
@@ -1495,79 +1533,85 @@ export default function App() {
 
               {/* Proposals Cards */}
               <div className="space-y-4">
-                {filteredProposals.map((prop) => {
-                  const badge = getStatusBadgeDetails(prop.status);
-                  const isSelected = selectedProposalId === prop.id;
-                  const sbertVal = Math.round((prop.similarityData?.sbertScore ?? 0.42) * 100);
-                  const lexicalVal = Math.round((prop.similarityData?.tfidfScore ?? 0.35) * 100);
+                {sortedProposals.length === 0 ? (
+                  <div className="bg-white rounded-[28px] p-8 text-center border border-slate-200/80 shadow-xs">
+                    <p className="text-sm font-bold text-slate-700">No project proposals match the selected filters.</p>
+                    <p className="text-xs text-slate-400 mt-1">Try resetting the status filter or search query.</p>
+                  </div>
+                ) : (
+                  sortedProposals.map((prop) => {
+                    const badge = getStatusBadgeDetails(prop.status);
+                    const isSelected = selectedProposalId === prop.id;
+                    const topicVal = Math.round((prop.similarityData?.sbertScore ?? 0.42) * 100);
+                    const textVal = Math.round((prop.similarityData?.tfidfScore ?? 0.35) * 100);
 
-                  return (
-                    <div 
-                      key={prop.id}
-                      className={`bg-white rounded-[28px] p-6 shadow-xs border transition-all duration-200 ${
-                        isSelected ? 'border-[#18191E] ring-2 ring-[#D4F938]' : 'border-slate-200/80 hover:border-slate-400'
-                      }`}
-                    >
-                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-mono font-black px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938]">
-                              {prop.projectId}
-                            </span>
-                            <span className="text-xs font-semibold text-slate-500">
-                              Track {prop.trackNo} · Group {prop.groupNo}
-                            </span>
-                            <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full ${
-                              prop.status === 'approved' 
-                                ? 'bg-[#C6B5FD] text-black' 
-                                : prop.status === 'flagged_conflict'
-                                  ? 'bg-amber-100 text-amber-950 border border-amber-300'
-                                  : 'bg-[#D4F938] text-black'
-                            }`}>
-                              {badge.label}
-                            </span>
-                          </div>
-
-                          <h3 className="text-lg font-black text-[#18191E]">
-                            {prop.title}
-                          </h3>
-
-                          <p className="text-xs text-slate-600 leading-relaxed">
-                            {prop.abstract}
-                          </p>
-
-                          {/* Team & Guide */}
-                          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1">
-                            <div>
-                              <span className="font-bold text-slate-400 mr-1.5">Guide:</span>
-                              <span className="font-extrabold text-black">{prop.guideName}</span>
-                            </div>
-                            <div>
-                              <span className="font-bold text-slate-400 mr-1.5">Team:</span>
-                              <span className="font-semibold text-slate-800">
-                                {prop.teamMembers.map(m => m.name).join(', ')}
+                    return (
+                      <div 
+                        key={prop.id}
+                        className={`bg-white rounded-[28px] p-6 shadow-xs border transition-all duration-200 ${
+                          isSelected ? 'border-[#18191E] ring-2 ring-[#D4F938]' : 'border-slate-200/80 hover:border-slate-400'
+                        }`}
+                      >
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-mono font-black px-3 py-1 rounded-full bg-[#18191E] text-[#D4F938]">
+                                {prop.projectId}
+                              </span>
+                              <span className="text-xs font-semibold text-slate-500">
+                                Track {prop.trackNo} · Group {prop.groupNo}
+                              </span>
+                              <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full ${
+                                prop.status === 'approved' 
+                                  ? 'bg-[#C6B5FD] text-black' 
+                                  : prop.status === 'flagged_conflict'
+                                    ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                    : 'bg-[#D4F938] text-black'
+                              }`}>
+                                {badge.label}
                               </span>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* Dual Similarity Gauge & Actions */}
-                        <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
-                          <div className="flex items-center gap-3 bg-[#F4F5F8] p-3 rounded-2xl border border-slate-200/80">
-                            <div>
-                              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT</span>
-                              <span className="text-sm font-black font-mono text-black">
-                                {sbertVal}%
-                              </span>
-                            </div>
-                            <div className="h-6 w-px bg-slate-300" />
-                            <div>
-                              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Lexical</span>
-                              <span className="text-sm font-black font-mono text-black">
-                                {lexicalVal}%
-                              </span>
+                            <h3 className="text-lg font-black text-[#18191E]">
+                              {prop.title}
+                            </h3>
+
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                              {prop.abstract}
+                            </p>
+
+                            {/* Team & Guide */}
+                            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1">
+                              <div>
+                                <span className="font-bold text-slate-400 mr-1.5">Guide:</span>
+                                <span className="font-extrabold text-black">{prop.guideName}</span>
+                              </div>
+                              <div>
+                                <span className="font-bold text-slate-400 mr-1.5">Team:</span>
+                                <span className="font-semibold text-slate-800">
+                                  {prop.teamMembers.map(m => m.name).join(', ')}
+                                </span>
+                              </div>
                             </div>
                           </div>
+
+                          {/* Dual Similarity Gauge & Actions */}
+                          <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
+                            <div className="flex items-center gap-3 bg-[#F4F5F8] p-3 rounded-2xl border border-slate-200/80">
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Topic</span>
+                                <span className="text-sm font-black font-mono text-black">
+                                  {topicVal}%
+                                </span>
+                              </div>
+                              <div className="h-6 w-px bg-slate-300" />
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Text</span>
+                                <span className="text-sm font-black font-mono text-black">
+                                  {textVal}%
+                                </span>
+                              </div>
+                            </div>
 
                           <div className="flex items-center gap-2">
                             {(currentRole === 'guide' || currentRole === 'coordinator') && prop.status !== 'approved' && (
@@ -1605,7 +1649,7 @@ export default function App() {
                       </div>
                     </div>
                   );
-                })}
+                }))}
               </div>
             </div>
           )}

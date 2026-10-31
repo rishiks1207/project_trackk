@@ -72,7 +72,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
   const [searchQuery, setSearchQuery] = useState('');
 
   const [arbitrationRemarks, setArbitrationRemarks] = useState(
-    'Group 05 provides full SBERT contextual embeddings and visual stage-gate tracking aligned with DBIT curriculum. Group 12 is advised to pivot to administrative exam room allocation to avoid duplicate effort.'
+    'Group 05 provides a well-defined project scope and pitch defense. Group 12 is advised to refine their target domain to avoid duplicate effort.'
   );
 
   // Student pitch inputs for submission & editing (STUDENT ROLE ONLY)
@@ -175,15 +175,15 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
                 {flaggedProposals.length > 0 && (
                   <span className="text-xs text-white/90 font-bold flex items-center gap-1.5 bg-red-500/20 border border-red-500/30 px-3 py-1 rounded-full">
                     <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-                    <span>{flaggedProposals.length} Semantic Clash Detected</span>
+                    <span>{flaggedProposals.length} Topic Overlap Detected</span>
                   </span>
                 )}
               </div>
               <h2 className="text-2xl font-black text-white mt-2 tracking-tight">
-                Topic Arbitration &amp; Conflict Defense Directory
+                Topic Arbitration Directory
               </h2>
               <p className="text-xs text-white/70 max-w-xl mt-1">
-                Select any topic clash or proposal below to inspect the side-by-side novelty matrix, review student 200-word pitch defenses, and execute coordinator arbitration decisions.
+                Select any topic proposal below to inspect similarity scores, review student pitch defenses, and make coordinator decisions.
               </p>
             </div>
 
@@ -194,7 +194,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
                 <span className="text-base font-black text-white">{proposals.length}</span>
               </div>
               <div className="bg-red-500/20 border border-red-500/30 px-3.5 py-2 rounded-2xl text-center">
-                <span className="text-[10px] text-red-300 uppercase font-bold block">Clashes (Sim &ge; 75%)</span>
+                <span className="text-[10px] text-red-300 uppercase font-bold block">Overlaps (&ge; 75%)</span>
                 <span className="text-base font-black text-red-400">{flaggedProposals.length}</span>
               </div>
               <div className="bg-[#D4F938]/20 border border-[#D4F938]/30 px-3.5 py-2 rounded-2xl text-center">
@@ -362,14 +362,14 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
                         {prop.similarityData && (
                           <div className="flex items-center gap-2 bg-[#F4F5F8] px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
                             <div>
-                              <span className="text-[9px] text-slate-400 font-bold block uppercase">SBERT</span>
+                              <span className="text-[9px] text-slate-400 font-bold block uppercase">Topic</span>
                               <span className={`font-mono font-bold ${(prop.similarityData.sbertScore || 0) >= 0.75 ? 'text-red-600 font-black' : 'text-slate-800'}`}>
                                 {Math.round((prop.similarityData.sbertScore || 0) * 100)}%
                               </span>
                             </div>
                             <div className="h-5 w-px bg-slate-300" />
                             <div>
-                              <span className="text-[9px] text-slate-400 font-bold block uppercase">Lexical</span>
+                              <span className="text-[9px] text-slate-400 font-bold block uppercase">Text</span>
                               <span className="font-mono font-bold text-slate-800">
                                 {Math.round((prop.similarityData.tfidfScore || 0) * 100)}%
                               </span>
@@ -484,7 +484,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
             </div>
             <div>
               <h3 className="text-base font-bold text-white">
-                {currentRole === 'student' ? 'My 200-Word Novelty Pitch Defense' : 'Semantic Overlap & Topic Clash Matrix'}
+                {currentRole === 'student' ? 'My 200-Word Novelty Pitch Defense' : 'Topic Comparison & Similarity Matrix'}
               </h3>
               <p className="text-xs text-white/70 max-w-md truncate">{activeProposal.title}</p>
             </div>
@@ -500,14 +500,14 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
               </div>
               <div className="h-6 w-px bg-white/20" />
               <div>
-                <span className="text-[10px] text-white/50 block font-bold uppercase tracking-wider">SBERT Dense</span>
+                <span className="text-[10px] text-white/50 block font-bold uppercase tracking-wider">Topic Match</span>
                 <span className="font-mono font-black text-sm text-[#D4F938]">
                   {Math.round(sbertScore * 100)}%
                 </span>
               </div>
               <div className="h-6 w-px bg-white/20" />
               <div>
-                <span className="text-[10px] text-white/50 block font-bold uppercase tracking-wider">TF-IDF Lexical</span>
+                <span className="text-[10px] text-white/50 block font-bold uppercase tracking-wider">Text Match</span>
                 <span className="font-mono font-black text-sm text-[#C6B5FD]">
                   {Math.round(tfidfScore * 100)}%
                 </span>
