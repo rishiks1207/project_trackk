@@ -598,30 +598,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
 
-        {/* 4 Stat Cards in Bento Colors */}
+        {/* 4 Stat Cards in High-Contrast Bento Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-6 pt-6 border-t border-white/10 text-xs relative z-10">
-          <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-sm">
-            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Total Accounts</span>
-            <div className="text-3xl font-black text-slate-900 mt-1 font-mono tabular-nums">{userList.length}</div>
-            <span className="text-[11px] text-slate-500 font-medium">in Firestore DB</span>
+          <div className="bg-white dark:bg-[#1E1F26] rounded-2xl p-4 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-white/10 transition-colors">
+            <span className="text-slate-600 dark:text-slate-400 text-[11px] uppercase font-extrabold tracking-wider block">Total Accounts</span>
+            <div className="text-3xl font-black text-slate-900 dark:text-white mt-1 font-mono tabular-nums">{userList.length}</div>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-1.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 font-bold text-[11px]">
+              in Firestore DB
+            </span>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-sm">
-            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Faculty Guides</span>
-            <div className="text-3xl font-black text-slate-900 mt-1 font-mono tabular-nums">{guideCount}</div>
-            <span className="text-[11px] text-[#D4F938] font-bold">Mentorship &amp; Review</span>
+          <div className="bg-white dark:bg-[#1E1F26] rounded-2xl p-4 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-white/10 transition-colors">
+            <span className="text-slate-600 dark:text-slate-400 text-[11px] uppercase font-extrabold tracking-wider block">Faculty Guides</span>
+            <div className="text-3xl font-black text-slate-900 dark:text-white mt-1 font-mono tabular-nums">{guideCount}</div>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-1.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold text-[11px]">
+              Mentorship &amp; Review
+            </span>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-sm">
-            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Coordinators</span>
-            <div className="text-3xl font-black text-slate-900 mt-1 font-mono tabular-nums">{coordCount}</div>
-            <span className="text-[11px] text-slate-900 font-bold">Arbitration &amp; Approval</span>
+          <div className="bg-white dark:bg-[#1E1F26] rounded-2xl p-4 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-white/10 transition-colors">
+            <span className="text-slate-600 dark:text-slate-400 text-[11px] uppercase font-extrabold tracking-wider block">Coordinators</span>
+            <div className="text-3xl font-black text-slate-900 dark:text-white mt-1 font-mono tabular-nums">{coordCount}</div>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-1.5 rounded-md bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold text-[11px]">
+              Arbitration &amp; Approval
+            </span>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-sm">
-            <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Capstones &amp; Projects</span>
-            <div className="text-3xl font-black text-slate-900 mt-1 font-mono tabular-nums">{proposals.length}</div>
-            <span className="text-[11px] text-[#C6B5FD] font-bold">Active Submissions</span>
+          <div className="bg-white dark:bg-[#1E1F26] rounded-2xl p-4 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-white/10 transition-colors">
+            <span className="text-slate-600 dark:text-slate-400 text-[11px] uppercase font-extrabold tracking-wider block">Capstones &amp; Projects</span>
+            <div className="text-3xl font-black text-slate-900 dark:text-white mt-1 font-mono tabular-nums">{proposals.length}</div>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-1.5 rounded-md bg-indigo-100 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-[11px]">
+              Active Submissions
+            </span>
           </div>
         </div>
       </div>
@@ -729,7 +737,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#F4F5F8] text-slate-400 uppercase text-[10px] font-black tracking-wider border-b border-slate-100">
+                <thead className="bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 uppercase text-[11px] font-black tracking-wider border-b border-slate-200 dark:border-white/10">
                   <tr>
                     <th className="p-4 pl-6">User Profile</th>
                     <th className="p-4">Role</th>

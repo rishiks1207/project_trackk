@@ -546,13 +546,13 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
                 { phase: 'Exp 6: Testing', week: 'W11–12', isHighlight: false },
                 { phase: 'Exp 7: Defense', week: 'W13–14', isHighlight: false }
               ].map((col, idx) => (
-                <div key={idx} className="flex flex-col items-center cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
-                  <span className={`text-[10px] sm:text-[11px] font-bold tracking-tight text-center line-clamp-1 ${
+                <div key={idx} className="flex flex-col items-center justify-center min-w-0 px-0.5 cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
+                  <span className={`text-[10px] sm:text-[11px] font-bold tracking-tight text-center truncate w-full block ${
                     col.isHighlight ? 'text-[#D4F938]' : 'text-slate-300'
                   }`}>
                     {col.phase}
                   </span>
-                  <span className="text-[9px] font-mono text-slate-400 mt-0.5">{col.week}</span>
+                  <span className="text-[9px] font-mono text-slate-400 mt-0.5 block">{col.week}</span>
                 </div>
               ))}
             </div>

@@ -17,7 +17,8 @@ import {
   Send,
   UserPlus,
   Menu,
-  X
+  X,
+  Settings
 } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
 import { Logo } from './Logo';
@@ -460,6 +461,27 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
             </>
           )}
 
+          {/* Universal Settings Tab for all profiles */}
+          <div className="pt-2 mt-2 border-t border-white/10">
+            <button
+              onClick={() => onTabChange('settings')}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'bg-white text-slate-950 shadow-md font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'text-slate-950' : 'text-slate-400'}`} />
+                <span>Settings</span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                activeTab === 'settings' ? 'bg-[#D4F938] text-slate-950' : 'bg-white/10 text-slate-400'
+              }`}>
+                Theme &amp; Font
+              </span>
+            </button>
+          </div>
         </nav>
       </div>
 
@@ -830,6 +852,24 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
                     </button>
                   </>
                 )}
+
+                {/* Universal Settings Tab for all profiles */}
+                <div className="pt-2 mt-2 border-t border-white/10">
+                  <button
+                    onClick={() => handleTabSelect('settings')}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold ${
+                      activeTab === 'settings' ? 'bg-white text-slate-950 font-bold' : 'text-slate-400 hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
+                    </div>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#D4F938] text-slate-950">
+                      Theme &amp; Font
+                    </span>
+                  </button>
+                </div>
               </nav>
             </div>
 

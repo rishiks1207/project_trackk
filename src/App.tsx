@@ -50,6 +50,7 @@ import { GuideNoticeBoard } from './components/GuideNoticeBoard';
 import { GuideMessageModal } from './components/GuideMessageModal';
 import { FeedbackLogModal } from './components/FeedbackLogModal';
 import { PresentationViewerModal } from './components/PresentationViewerModal';
+import { SettingsPanel } from './components/SettingsPanel';
 
 import { 
   ProjectProposal, 
@@ -83,6 +84,62 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [currentRole, setCurrentRole] = useState<UserRole>('student');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  // Theme & Appearance Preferences (Dark / Light & Font Size Adjustment)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('dbit_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return 'light';
+  });
+
+  const [fontScale, setFontScale] = useState<number>(() => {
+    const saved = localStorage.getItem('dbit_font_scale');
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed >= 85 && parsed <= 130) return parsed;
+    }
+    return 100;
+  });
+
+  const [highContrast, setHighContrast] = useState<boolean>(() => {
+    return localStorage.getItem('dbit_high_contrast') === 'true';
+  });
+
+  // Apply theme class to document root
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('dbit_theme', theme);
+  }, [theme]);
+
+  // Apply font scale to document root font-size (affects all Tailwind rem typography)
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.fontSize = `${(fontScale / 100) * 16}px`;
+    localStorage.setItem('dbit_font_scale', fontScale.toString());
+  }, [fontScale]);
+
+  // Apply high-contrast mode if enabled
+  useEffect(() => {
+    const root = document.documentElement;
+    if (highContrast) {
+      root.classList.add('high-contrast');
+    } else {
+      root.classList.remove('high-contrast');
+    }
+    localStorage.setItem('dbit_high_contrast', highContrast.toString());
+  }, [highContrast]);
+
+  const handleResetPreferences = () => {
+    setTheme('light');
+    setFontScale(100);
+    setHighContrast(false);
+    showToast('Display preferences restored to standard defaults (Light Mode, 100% Font Scale).');
+  };
   
   // App state
   const [proposals, setProposals] = useState<ProjectProposal[]>(INITIAL_PROPOSALS);
@@ -771,6 +828,11 @@ export default function App() {
           title: 'Database & Account Management',
           subtitle: 'Cloud SQL PostgreSQL user directory, group relations and security roles'
         };
+      case 'settings':
+        return {
+          title: 'Display & Interface Settings',
+          subtitle: 'Adjust dark/light theme, typography scale bar, and visual accessibility'
+        };
       default:
         return {
           title: 'Project Overview',
@@ -782,7 +844,7 @@ export default function App() {
   const viewDetails = getViewDetails();
 
   return (
-    <div className="min-h-screen w-full bg-[#F4F5F8] flex flex-col md:flex-row font-sans antialiased text-slate-900 selection:bg-[#D4F938] selection:text-slate-950">
+    <div className={`min-h-screen w-full ${theme === 'dark' ? 'bg-[#0E0F14] text-slate-100' : 'bg-[#F4F5F8] text-slate-900'} flex flex-col md:flex-row font-sans antialiased selection:bg-[#D4F938] selection:text-slate-950 transition-colors duration-200`}>
       
       {/* Dark Floating Toast Notification */}
       {toastMessage && (
@@ -817,7 +879,7 @@ export default function App() {
       />
 
       {/* Right Main Porcelain Content Viewport (Straight up edge-to-edge webapp) */}
-      <div className="flex-1 bg-[#F4F5F8] p-4 sm:p-7 lg:p-8 pb-24 md:pb-8 flex flex-col overflow-y-auto min-h-screen">
+      <div className={`flex-1 ${theme === 'dark' ? 'bg-[#0E0F14]' : 'bg-[#F4F5F8]'} p-4 sm:p-7 lg:p-8 pb-24 md:pb-8 flex flex-col overflow-y-auto min-h-screen transition-colors duration-200`}>
           
           {/* Top Bar with User Avatar, Pill Search, and Working Notification Bell */}
           <FluxTopBar
@@ -835,10 +897,10 @@ export default function App() {
           {/* Page Display Header (Big Bold Title + Subtitle + Date Filter Pill) */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 pt-1">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 leading-none">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none transition-colors">
                 {viewDetails.title}
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1.5">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1.5 transition-colors">
                 {viewDetails.subtitle}
               </p>
             </div>
@@ -848,7 +910,7 @@ export default function App() {
               <span className="text-xs font-semibold text-slate-400 hidden sm:inline">
                 24 October, 2026
               </span>
-              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-slate-800 text-xs font-bold border border-slate-200/70 shadow-xs cursor-pointer hover:bg-slate-50 transition-colors">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#1E1F26] text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200/70 dark:border-white/10 shadow-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                 <span>Cohort 2026</span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </div>
@@ -1779,6 +1841,23 @@ export default function App() {
                   saveProposalToFirestore(updated);
                   showToast(`Allocated ${updated.projectId}: Guide -> ${updated.guideName}, Coordinator -> ${updated.coordinatorName}`);
                 }}
+              />
+            </div>
+          )}
+
+          {/* ===================== VIEW 9: SETTINGS (THEME & FONT ADJUSTMENT) ===================== */}
+          {activeTab === 'settings' && (
+            <div className="space-y-4">
+              <SettingsPanel
+                currentUser={currentUser}
+                currentRole={currentRole}
+                theme={theme}
+                onThemeChange={setTheme}
+                fontScale={fontScale}
+                onFontScaleChange={setFontScale}
+                highContrast={highContrast}
+                onHighContrastChange={setHighContrast}
+                onResetPreferences={handleResetPreferences}
               />
             </div>
           )}

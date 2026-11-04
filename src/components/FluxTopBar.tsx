@@ -246,21 +246,21 @@ export const FluxTopBar: React.FC<FluxTopBarProps> = ({
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-          className="flex items-center gap-2.5 sm:gap-3 p-1.5 pr-3 sm:pr-4 rounded-full bg-white/60 sm:bg-transparent hover:bg-white transition-colors duration-200 cursor-pointer text-left group border border-slate-200/60 sm:border-transparent"
+          className="flex items-center gap-2.5 sm:gap-3 p-1.5 pr-3 sm:pr-4 rounded-full bg-white/60 dark:bg-white/5 sm:bg-transparent hover:bg-white dark:hover:bg-white/10 transition-colors duration-200 cursor-pointer text-left group border border-slate-200/60 dark:border-white/10 sm:border-transparent"
         >
           {/* Avatar with smooth rounded frame */}
-          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#18191E] text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-sm ring-2 ring-white shrink-0">
+          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#18191E] dark:bg-[#D4F938] text-white dark:text-slate-950 flex items-center justify-center font-bold text-xs sm:text-sm shadow-sm ring-2 ring-white dark:ring-white/20 shrink-0">
             {currentUser.name ? currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'US'}
           </div>
 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-slate-900 text-xs sm:text-sm tracking-tight group-hover:text-black truncate max-w-[150px] sm:max-w-none">
+              <span className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight group-hover:text-black dark:group-hover:text-[#D4F938] truncate max-w-[150px] sm:max-w-none transition-colors">
                 {currentUser.name}
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
             </div>
-            <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium block -mt-0.5 truncate max-w-[180px] sm:max-w-none">
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium block -mt-0.5 truncate max-w-[180px] sm:max-w-none">
               {currentUser.email}
             </span>
           </div>
@@ -377,7 +377,7 @@ export const FluxTopBar: React.FC<FluxTopBarProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search proposals, topics..."
-            className="w-full sm:w-56 md:w-64 lg:w-72 bg-white rounded-full pl-9 sm:pl-11 pr-4 py-2 sm:py-2.5 text-xs text-slate-900 placeholder:text-slate-400 border border-slate-200/70 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-slate-300 transition-all font-medium"
+            className="w-full sm:w-56 md:w-64 lg:w-72 bg-white dark:bg-[#1E1F26] rounded-full pl-9 sm:pl-11 pr-4 py-2 sm:py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 border border-slate-200/70 dark:border-white/10 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-slate-300 dark:focus:ring-white/20 transition-all font-medium"
           />
         </div>
 
@@ -385,7 +385,7 @@ export const FluxTopBar: React.FC<FluxTopBarProps> = ({
         <div className="relative" ref={notifRef}>
           <button 
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center text-slate-700 hover:text-slate-950 border border-slate-200/70 shadow-xs relative transition-all duration-200 hover:scale-105 cursor-pointer shrink-0"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white dark:bg-[#1E1F26] flex items-center justify-center text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white border border-slate-200/70 dark:border-white/10 shadow-xs relative transition-all duration-200 hover:scale-105 cursor-pointer shrink-0"
             title="Notifications"
             aria-label="Open notifications panel"
           >
