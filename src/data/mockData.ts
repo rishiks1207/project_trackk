@@ -373,7 +373,7 @@ export const INITIAL_PROPOSALS: ProjectProposal[] = [
         timestamp: '2026-10-19T10:00:00Z',
         stage: 'Conflict Arbitration',
         status: 'revision_required',
-        remarks: 'Semantic overlap with Group 05 is high (84%). Group 05 has already passed Review 1 with comprehensive UML models and SBERT implementation. Group 12 must pivot or refine scope to administrative timetable integration.',
+        remarks: 'Semantic overlap with Group 05 is high (84%). Group 05 has already passed Review 1 with comprehensive UML models and similarity engine implementation. Group 12 must pivot or refine scope to administrative timetable integration.',
         actionItems: ['Pivot to Automated Exam Timetable & Lab Allocation or differentiate methodology']
       }
     ],
@@ -489,7 +489,7 @@ export const LITERATURE_REVIEW_PAPERS = [
     title: 'Semantic Similarity & Paraphrase Detection for Proposals using BERT',
     authors: 'J. Dev, S. Nair, L. Verma',
     year: 2024,
-    methodology: 'Sentence-BERT (SBERT) contextual embeddings, threshold >= 0.75.',
+    methodology: 'Contextual similarity embeddings, threshold >= 0.75.',
     keyFindings: '94.2% accuracy in detecting paraphrased project titles.',
     limitations: 'Higher computational overhead.'
   },

@@ -199,7 +199,7 @@ let memoryMessages: any[] = [
     senderRole: 'guide',
     targetGroupNo: 5,
     subject: 'Stage 1 Architecture Review Sign-Off',
-    message: 'Excellent progress on the SBERT threshold pipeline. Ensure the UML sequence diagrams map with FastAPI endpoints by Week 6.',
+    message: 'Excellent progress on the similarity threshold pipeline. Ensure the UML sequence diagrams map with FastAPI endpoints by Week 6.',
     urgency: 'normal',
     timestamp: new Date().toISOString()
   }

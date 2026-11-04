@@ -23,8 +23,8 @@ export const INITIAL_GUIDE_MESSAGES: GuideMessage[] = [
     senderName: 'Mr. Nazareth Remedios',
     senderRole: 'guide',
     targetGroupNo: 5,
-    subject: 'Stage 1 Architecture Review Sign-Off & SBERT Threshold',
-    message: 'Excellent progress on the SBERT threshold pipeline and vector database schema. Ensure the UML sequence diagrams map with FastAPI endpoints and deliverable documents by Week 6.',
+    subject: 'Stage 1 Architecture Review Sign-Off & Similarity Threshold',
+    message: 'Excellent progress on the similarity threshold pipeline and database schema. Ensure the UML sequence diagrams map with FastAPI endpoints and deliverable documents by Week 6.',
     urgency: 'normal',
     timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
     replies: [
@@ -276,6 +276,39 @@ export async function authenticateUserWithFirestore(
   return null;
 }
 
+function sanitizeProposal(p: ProjectProposal): ProjectProposal {
+  const cleanStr = (s?: string) => {
+    if (!s) return s;
+    return s
+      .replace(/Sentence-BERT/gi, 'Similarity Model')
+      .replace(/SBERT\s*&\s*Cosine/gi, 'Similarity Engine')
+      .replace(/SBERT\s*\+\s*TF-IDF/gi, 'Similarity Check')
+      .replace(/SBERT/gi, 'Similarity')
+      .replace(/TF-IDF/gi, 'Text Match')
+      .replace(/Lexical/gi, 'Text Match');
+  };
+
+  return {
+    ...p,
+    title: cleanStr(p.title) || p.title,
+    abstract: cleanStr(p.abstract) || p.abstract,
+    problemStatement: cleanStr(p.problemStatement) || p.problemStatement,
+    stageGates: p.stageGates?.map(g => ({
+      ...g,
+      title: cleanStr(g.title) || g.title,
+      submissionNotes: cleanStr(g.submissionNotes) || g.submissionNotes,
+      deliverable: cleanStr(g.deliverable) || g.deliverable
+    })),
+    githubData: p.githubData ? {
+      ...p.githubData,
+      latestCommits: p.githubData.latestCommits?.map(c => ({
+        ...c,
+        message: cleanStr(c.message) || c.message
+      }))
+    } : undefined
+  };
+}
+
 /**
  * Subscribes to real-time changes in proposals collection (individual projects).
  */
@@ -290,7 +323,8 @@ export function subscribeToProposals(
         if (!snapshot.empty) {
           const list: ProjectProposal[] = [];
           snapshot.forEach((d) => {
-            list.push(d.data() as ProjectProposal);
+            const raw = d.data() as ProjectProposal;
+            list.push(sanitizeProposal(raw));
           });
           callback(list);
         }

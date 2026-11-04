@@ -30,7 +30,7 @@ export function getNextStatus(
       if (action === 'SUBMIT') {
         return {
           nextStatus: 'evaluating_similarity',
-          message: 'Proposal submitted. Initiating SBERT + TF-IDF semantic embedding screening...'
+          message: 'Proposal submitted. Initiating similarity screening...'
         };
       }
       break;
@@ -140,7 +140,7 @@ export function getStatusBadgeDetails(status: ProposalStatus): {
       };
     case 'evaluating_similarity':
       return {
-        label: 'Screening (SBERT)',
+        label: 'Similarity Screening',
         badgeClass: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300',
         description: 'Computing contextual embeddings and cosine similarity.'
       };

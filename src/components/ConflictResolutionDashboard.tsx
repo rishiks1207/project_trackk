@@ -484,7 +484,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
             </div>
             <div>
               <h3 className="text-base font-bold text-white">
-                {currentRole === 'student' ? 'My 200-Word Novelty Pitch Defense' : 'Topic Comparison & Similarity Matrix'}
+                {currentRole === 'student' ? 'My 200-Word Pitch Defense' : 'Topic Comparison & Similarity Matrix'}
               </h3>
               <p className="text-xs text-white/70 max-w-md truncate">{activeProposal.title}</p>
             </div>
@@ -520,7 +520,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
                   ? 'bg-[#D4F938]/20 text-[#D4F938] border border-[#D4F938]/30'
                   : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
               }`}>
-                {activeProposal.status === 'approved' ? 'Novelty Approved' : 'Defense Under Review'}
+                {activeProposal.status === 'approved' ? 'Proposal Approved' : 'Defense Under Review'}
               </span>
             ) : (
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
@@ -578,7 +578,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
               <div className="flex items-center justify-between text-xs font-bold text-[#18191E]">
                 <span className="flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-[#18191E]" />
-                  <span>200-Word Novelty Pitch Defense</span>
+                  <span>200-Word Pitch Defense</span>
                 </span>
                 {hasSubmittedPitch ? (
                   <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
@@ -644,7 +644,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
                   <p className="text-xs text-slate-400 italic">No pitch defense submitted yet.</p>
                   <p className="text-[11px] text-slate-500">
                     {currentRole === 'student' 
-                      ? 'Submit your 200-word justification below to defend your topic novelty.'
+                      ? 'Submit your 200-word justification below to defend your project originality.'
                       : 'Awaiting student pitch defense submission for this topic.'}
                   </p>
                 </div>
@@ -698,7 +698,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
                 <div className="flex items-center justify-between text-xs font-bold text-[#18191E]">
                   <span className="flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-[#18191E]" />
-                    <span>200-Word Novelty Pitch Defense</span>
+                    <span>200-Word Pitch Defense</span>
                   </span>
                   {conflictingProposal.pitchDefense?.content ? (
                     <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
@@ -795,7 +795,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
                   type="text"
                   value={keyDiffInput}
                   onChange={e => setKeyDiffInput(e.target.value)}
-                  placeholder="e.g. SBERT dense embeddings & real-time Stage Gate"
+                  placeholder="e.g. Real-time similarity engine & stage gate workflow"
                   className="w-full px-3.5 py-2 text-xs border border-amber-300 rounded-full bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
                 />
               </div>
@@ -858,7 +858,7 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
                   type="text"
                   value={keyDiffInput}
                   onChange={e => setKeyDiffInput(e.target.value)}
-                  placeholder="e.g. SBERT embeddings + DBIT Stage Gate Workflow"
+                  placeholder="e.g. Similarity engine + DBIT Stage Gate Workflow"
                   className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-full bg-[#F4F5F8] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#D4F938]"
                 />
               </div>

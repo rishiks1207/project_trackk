@@ -149,7 +149,7 @@ export function getSyntheticGitHubData(owner: string, repo: string): GitHubSyncD
     latestCommits: [
       {
         sha: 'b82d41f',
-        message: 'feat: SBERT embedding cosine similarity threshold engine (Exp 5)',
+        message: 'feat: similarity threshold engine (Exp 5)',
         author: 'Rishik Ezhuthachan',
         date: new Date(Date.now() - 3600000 * 3).toISOString(),
         url: `https://github.com/${owner}/${repo}/commit/b82d41f`
@@ -170,7 +170,7 @@ export function getSyntheticGitHubData(owner: string, repo: string): GitHubSyncD
       },
       {
         sha: '10ab87c',
-        message: 'refactor: DBIT historical repository search and TF-IDF n-gram vectorizer',
+        message: 'refactor: DBIT historical repository search and similarity matcher',
         author: 'Aryan Gaikwad',
         date: new Date(Date.now() - 3600000 * 72).toISOString(),
         url: `https://github.com/${owner}/${repo}/commit/10ab87c`

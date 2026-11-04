@@ -79,30 +79,9 @@ import {
 } from './utils/firestoreSync';
 
 export default function App() {
-  // Authentication & active user state
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    try {
-      const saved = localStorage.getItem('dbit_active_user');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      // ignore
-    }
-    // Default to student (Rishik, Group 5) for instant preview if no saved session
-    return {
-      id: 5,
-      uid: 'usr-stud-01',
-      email: 'rishiks1207@gmail.com',
-      name: 'Rishik Ezhuthachan',
-      role: 'student',
-      rollNo: '15',
-      cohort: 'SE COMPS C (Batch A)',
-      groupNo: 5,
-      trackNo: 7,
-      department: 'Computer Engineering'
-    };
-  });
-
-  const [currentRole, setCurrentRole] = useState<UserRole>(currentUser?.role || 'student');
+  // Authentication & active user state - initialized to null so LoginPage is always the first page shown
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [currentRole, setCurrentRole] = useState<UserRole>('student');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   
   // App state
@@ -273,6 +252,16 @@ export default function App() {
     ))
   );
 
+  const hasSubmittedProposal = currentRole === 'student' && Boolean(studentProposal);
+
+  const handleOpenSubmitModal = () => {
+    if (hasSubmittedProposal) {
+      showToast(`Proposal already submitted for Group ${currentUser?.groupNo || studentProposal?.groupNo || 5}. Each student group can only submit 1 proposal.`);
+      return;
+    }
+    setIsSubmitModalOpen(true);
+  };
+
   const activeProposal = proposals.find(p => p.id === selectedProposalId) || 
     (currentRole === 'student' ? studentProposal : undefined) || 
     proposals[0];
@@ -345,7 +334,7 @@ export default function App() {
       stageGates: [
         {
           id: 'gate-0',
-          title: 'Topic Approval & SBERT Screening',
+          title: 'Topic Approval & Similarity Screening',
           phase: 'stage1_design',
           weekRange: 'W1–W2',
           dueDate: '2026-07-14',
@@ -415,7 +404,7 @@ export default function App() {
           timestamp: new Date().toISOString(),
           stage: 'Topic Submission',
           status: 'comment',
-          remarks: 'Initial proposal registered. SBERT similarity score is within accepted safety boundaries (<0.75).'
+          remarks: 'Initial proposal registered. Similarity score is within accepted safety boundaries (<0.75).'
         }
       ],
       createdAt: new Date().toISOString(),
@@ -604,7 +593,7 @@ export default function App() {
         pitchDefense: {
           content: pitchText,
           submittedAt: new Date().toISOString(),
-          keyDifferentiator: keyDifferentiator || p.pitchDefense?.keyDifferentiator || 'SBERT Embeddings & DBIT Stage Gate Workflow',
+          keyDifferentiator: keyDifferentiator || p.pitchDefense?.keyDifferentiator || 'Similarity Engine & DBIT Stage Gate Workflow',
           targetStack: targetStack || p.pitchDefense?.targetStack || p.techStack.join(', '),
           expectedDeliverable: p.pitchDefense?.expectedDeliverable || 'Full Functional MVP'
         }
@@ -749,8 +738,8 @@ export default function App() {
         };
       case 'proposals':
         return {
-          title: currentRole === 'student' ? 'My Project & SBERT Novelty' : 'Cohort Proposals & Allocation',
-          subtitle: 'Real-time NLP similarity screening against 500+ departmental theses'
+          title: currentRole === 'student' ? 'My Project & Originality Check' : 'Cohort Proposals & Allocation',
+          subtitle: 'Real-time similarity screening against 500+ departmental theses'
         };
       case 'gantt':
         return {
@@ -765,7 +754,7 @@ export default function App() {
       case 'conflicts':
         return {
           title: 'Topic Arbitration & Pitch Defense',
-          subtitle: 'Coordinator side-by-side novelty matrix and scope allocation queue'
+          subtitle: 'Coordinator side-by-side pitch defense matrix and scope allocation queue'
         };
       case 'repository':
         return {
@@ -822,7 +811,8 @@ export default function App() {
         proposalsCount={currentRole === 'student' ? (studentProposal ? 1 : 0) : proposals.length}
         noticesCount={noticesCount}
         thesesCount={thesesCount}
-        onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
+        hasSubmittedProposal={hasSubmittedProposal}
+        onOpenSubmitModal={handleOpenSubmitModal}
         onOpenGuideMessageModal={() => setIsGuideMessageModalOpen(true)}
       />
 
@@ -934,13 +924,13 @@ export default function App() {
                                 No Project Proposal Submitted Yet
                               </h3>
                               <p className="text-xs text-slate-600 leading-relaxed">
-                                To begin milestone tracking, automated SBERT originality verification, and stage-gate evaluations, you must register your project proposal. Submitting your proposal assigns your project to your Faculty Guide for review and unlocks your 14-week engineering timeline.
+                                To begin milestone tracking, automated similarity verification, and stage-gate evaluations, you must register your project proposal. Submitting your proposal assigns your project to your Faculty Guide for review and unlocks your 14-week engineering timeline.
                               </p>
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                               <button
-                                onClick={() => setIsSubmitModalOpen(true)}
+                                onClick={handleOpenSubmitModal}
                                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#D4F938] hover:bg-[#cbf525] text-black text-xs font-black shadow-xs transition-all cursor-pointer"
                               >
                                 <PlusCircle className="w-4 h-4" />
@@ -972,9 +962,9 @@ export default function App() {
                               <div className="w-8 h-8 rounded-xl bg-[#18191E] text-[#C6B5FD] flex items-center justify-center text-xs font-black">
                                 2
                               </div>
-                              <h4 className="text-xs font-black text-[#18191E]">2. Automated SBERT Screening</h4>
+                              <h4 className="text-xs font-black text-[#18191E]">2. Automated Similarity Check</h4>
                               <p className="text-[11px] text-slate-500 leading-relaxed">
-                                The system runs real-time Sentence-BERT embeddings against 500+ archived DBIT theses to guarantee topic originality (&lt;75% similarity).
+                                The system runs real-time similarity checks against 500+ archived DBIT theses to guarantee topic originality (&lt;75% overlap).
                               </p>
                             </div>
 
@@ -1052,25 +1042,25 @@ export default function App() {
                             </div>
                           </div>
 
-                          {/* Right: SBERT Score Bubble & Fast Action Buttons */}
+                          {/* Right: Score Bubble & Fast Action Buttons */}
                           <div className="flex flex-col items-start lg:items-end gap-4 shrink-0">
                             <div className="flex items-center gap-3 bg-[#F4F5F8] p-3.5 rounded-2xl border border-slate-200/80">
                               <div>
-                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT Dense</span>
+                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Topic Match</span>
                                 <span className="text-base font-black font-mono text-black">
                                   {sbertVal}%
                                 </span>
                               </div>
                               <div className="h-7 w-px bg-slate-300" />
                               <div>
-                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">TF-IDF Lexical</span>
+                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Text Match</span>
                                 <span className="text-base font-black font-mono text-black">
                                   {lexicalVal}%
                                 </span>
                               </div>
                               <div className="h-7 w-px bg-slate-300" />
                               <div>
-                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Novelty</span>
+                                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Originality</span>
                                 <span className="text-base font-black font-mono text-emerald-700">
                                   {noveltyVal}%
                                 </span>
@@ -1243,14 +1233,14 @@ export default function App() {
                                   <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
                                     <div className="flex items-center gap-3 bg-[#F4F5F8] p-3 rounded-2xl border border-slate-200/80">
                                       <div>
-                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT</span>
+                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Topic Match</span>
                                         <span className="text-sm font-black font-mono text-black">
                                           {sbertVal}%
                                         </span>
                                       </div>
                                       <div className="h-6 w-px bg-slate-300" />
                                       <div>
-                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Lexical</span>
+                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Text Match</span>
                                         <span className="text-sm font-black font-mono text-black">
                                           {lexicalVal}%
                                         </span>
@@ -1301,7 +1291,7 @@ export default function App() {
                         <p className="text-xs text-slate-500 font-medium">
                           {currentRole === 'guide'
                             ? `Proposals under faculty mentorship of ${currentUser?.name || 'Faculty Guide'}`
-                            : 'Verified through automated Sentence-BERT embeddings & TF-IDF lexical matrix'}
+                            : 'Verified through automated similarity and topic screening'}
                         </p>
                       </div>
 
@@ -1354,7 +1344,7 @@ export default function App() {
                             </div>
                             <h3 className="text-xl font-black text-[#18191E]">No Student Groups Assigned to You Yet</h3>
                             <p className="text-xs text-slate-600 leading-relaxed max-w-lg mx-auto">
-                              You are logged in as {currentUser?.name || 'Faculty Guide'}. There are currently no student project proposals assigned under your guide name. As students submit proposals designating you as their guide, they will appear here for review, SBERT inspection, and stage gate evaluation.
+                              You are logged in as {currentUser?.name || 'Faculty Guide'}. There are currently no student project proposals assigned under your guide name. As students submit proposals designating you as their guide, they will appear here for review, similarity inspection, and stage gate evaluation.
                             </p>
                             <button
                               onClick={() => setActiveTab('proposals')}
@@ -1423,14 +1413,14 @@ export default function App() {
                                   <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 shrink-0">
                                     <div className="flex items-center gap-3 bg-[#F4F5F8] p-3 rounded-2xl border border-slate-200/80">
                                       <div>
-                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">SBERT</span>
+                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Topic Match</span>
                                         <span className="text-sm font-black font-mono text-black">
                                           {sbertVal}%
                                         </span>
                                       </div>
                                       <div className="h-6 w-px bg-slate-300" />
                                       <div>
-                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Lexical</span>
+                                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Text Match</span>
                                         <span className="text-sm font-black font-mono text-black">
                                           {lexicalVal}%
                                         </span>
@@ -1730,10 +1720,10 @@ export default function App() {
                   </div>
                   <h3 className="text-xl font-black text-[#18191E]">No Pitch Defense Active</h3>
                   <p className="text-xs text-slate-600 leading-relaxed max-w-md mx-auto">
-                    You haven&apos;t submitted a capstone proposal yet. Once registered, your proposal&apos;s SBERT originality screen and 200-word pitch defense will be accessible here.
+                    You haven&apos;t submitted a capstone proposal yet. Once registered, your proposal&apos;s similarity originality screen and 200-word pitch defense will be accessible here.
                   </p>
                   <button
-                    onClick={() => setIsSubmitModalOpen(true)}
+                    onClick={handleOpenSubmitModal}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-black text-xs font-black shadow-xs cursor-pointer"
                   >
                     <PlusCircle className="w-4 h-4" />

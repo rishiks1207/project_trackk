@@ -20,6 +20,7 @@ import {
   X
 } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
+import { Logo } from './Logo';
 
 interface FluxSidebarProps {
   activeTab: string;
@@ -29,6 +30,7 @@ interface FluxSidebarProps {
   proposalsCount: number;
   noticesCount?: number;
   thesesCount?: number;
+  hasSubmittedProposal?: boolean;
   onOpenSubmitModal: () => void;
   onOpenGuideMessageModal?: () => void;
 }
@@ -41,6 +43,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
   proposalsCount,
   noticesCount = 2,
   thesesCount = 6,
+  hasSubmittedProposal = false,
   onOpenSubmitModal,
   onOpenGuideMessageModal
 }) => {
@@ -55,30 +58,25 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
     <>
       {/* Mobile Top Header */}
       <header className="md:hidden sticky top-0 z-40 bg-[#18191E] text-white px-4 py-3 flex items-center justify-between border-b border-white/10 shadow-md">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#D4F938] to-[#C6B5FD] flex items-center justify-center p-1.5 shadow-xs">
-            <svg viewBox="0 0 24 24" className="w-4 h-4 text-slate-950 fill-current">
-              <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" />
-            </svg>
-          </div>
-          <div>
-            <span className="text-base font-extrabold tracking-tight text-white flex items-center gap-1">
-              DBIT <span className="text-[#D4F938]">ProjectTrack</span>
-            </span>
-            <span className="text-[9px] text-slate-400 block font-semibold -mt-0.5 tracking-wider uppercase">
-              {currentRole.toUpperCase()}
-            </span>
-          </div>
-        </div>
+        <Logo size="sm" roleBadge={currentRole.toUpperCase()} />
 
         <div className="flex items-center gap-2">
           {currentRole === 'student' && (
-            <button
-              onClick={onOpenSubmitModal}
-              className="px-2.5 py-1 rounded-full bg-[#D4F938] text-slate-950 text-[11px] font-black tracking-tight"
-            >
-              + Proposal
-            </button>
+            hasSubmittedProposal ? (
+              <button
+                onClick={() => handleTabSelect('proposals')}
+                className="px-2.5 py-1 rounded-full bg-[#C6B5FD] text-slate-950 text-[11px] font-bold tracking-tight"
+              >
+                Submitted ✓
+              </button>
+            ) : (
+              <button
+                onClick={onOpenSubmitModal}
+                className="px-2.5 py-1 rounded-full bg-[#D4F938] text-slate-950 text-[11px] font-black tracking-tight"
+              >
+                + Proposal
+              </button>
+            )
           )}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -90,24 +88,12 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
         </div>
       </header>
 
-      {/* Desktop Persistent Sidebar */}
-      <aside className="hidden md:flex md:w-64 lg:w-72 bg-[#18191E] text-white p-5 lg:p-6 flex-col justify-between shrink-0 border-r border-white/10 md:min-h-screen">
+      {/* Desktop Persistent Sidebar - FIXED / STICKY to Viewport Top */}
+      <aside className="hidden md:flex md:w-60 lg:w-64 bg-[#18191E] text-white p-4 flex-col justify-between shrink-0 border-r border-white/10 md:h-screen md:sticky md:top-0 overflow-y-auto z-30">
         <div>
-          {/* Brand Logo with Neon-Lime Geometric Spark */}
-          <div className="flex items-center gap-3 mb-8 px-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#D4F938] to-[#C6B5FD] flex items-center justify-center p-2 shadow-md shadow-[#D4F938]/20">
-              <svg viewBox="0 0 24 24" className="w-5 h-5 text-slate-950 fill-current">
-                <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" />
-              </svg>
-            </div>
-            <div>
-              <span className="text-xl font-extrabold tracking-tight text-white flex items-center gap-1.5 font-sans">
-                DBIT <span className="text-[#D4F938]">ProjectTrack</span>
-              </span>
-              <span className="text-[10px] text-slate-400 block font-medium -mt-1 tracking-wider uppercase">
-                {currentRole.toUpperCase()} CONTROLLER
-              </span>
-            </div>
+          {/* Brand Logo with High-Tech Geometric Stage Gate Emblem */}
+          <div className="mb-5 px-1">
+            <Logo size="md" roleBadge={`${currentRole.toUpperCase()} CONTROLLER`} />
           </div>
 
           {/* Role-Specific Navigation Menu */}
@@ -478,49 +464,60 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
       </div>
 
       {/* Role-Specific Action Card in the Neon-Lime Theme */}
-      <div className="mt-8 bg-[#D4F938] rounded-3xl p-5 text-slate-950 relative overflow-hidden shadow-lg group">
-        <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-black/5 pointer-events-none" />
+      <div className="mt-4 bg-[#D4F938] rounded-2xl p-4 text-slate-950 relative overflow-hidden shadow-md group">
+        <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-black/5 pointer-events-none" />
 
         <div className="relative z-10">
-          <div className="w-9 h-9 rounded-2xl bg-slate-950 text-[#D4F938] flex items-center justify-center mb-3 shadow-sm group-hover:scale-105 transition-transform duration-200">
+          <div className="w-8 h-8 rounded-xl bg-slate-950 text-[#D4F938] flex items-center justify-center mb-2 shadow-sm group-hover:scale-105 transition-transform duration-200">
             {currentRole === 'admin' ? (
-              <UserCog className="w-5 h-5" />
+              <UserCog className="w-4 h-4" />
             ) : currentRole === 'guide' ? (
-              <MessageSquare className="w-5 h-5" />
+              <MessageSquare className="w-4 h-4" />
             ) : currentRole === 'coordinator' ? (
-              <Scale className="w-5 h-5" />
+              <Scale className="w-4 h-4" />
+            ) : hasSubmittedProposal ? (
+              <ShieldCheck className="w-4 h-4 text-[#D4F938]" />
             ) : (
-              <PlusCircle className="w-5 h-5" />
+              <PlusCircle className="w-4 h-4" />
             )}
           </div>
 
-          <h4 className="text-base font-extrabold tracking-tight text-slate-950 leading-snug">
+          <h4 className="text-xs sm:text-sm font-black tracking-tight text-slate-950 leading-snug">
             {currentRole === 'admin' && 'Cloud SQL Control'}
             {currentRole === 'guide' && 'Guide Text Notice'}
             {currentRole === 'coordinator' && 'Conflict Arbitration'}
-            {currentRole === 'student' && 'Submit Proposal'}
+            {currentRole === 'student' && (hasSubmittedProposal ? 'Proposal Submitted' : 'Submit Proposal')}
           </h4>
           
-          <p className="text-xs text-slate-800 font-medium mt-1 leading-relaxed">
-            {currentRole === 'admin' && 'Provision accounts & manage project relations.'}
-            {currentRole === 'guide' && 'Broadcast instant advisories to student groups.'}
-            {currentRole === 'coordinator' && 'Review pitch defenses and award topic scopes.'}
-            {currentRole === 'student' && 'Cross-check novelty against 500+ DBIT theses.'}
+          <p className="text-[11px] text-slate-800 font-medium mt-0.5 leading-snug">
+            {currentRole === 'admin' && 'Provision accounts & manage relations.'}
+            {currentRole === 'guide' && 'Broadcast instant advisories.'}
+            {currentRole === 'coordinator' && 'Review pitch defenses and awards.'}
+            {currentRole === 'student' && (hasSubmittedProposal ? 'Your proposal is registered.' : 'Check similarity vs 500+ DBIT theses.')}
           </p>
 
           {currentRole === 'student' && (
-            <button
-              onClick={onOpenSubmitModal}
-              className="w-full mt-4 py-2.5 px-4 rounded-full bg-slate-950 text-white hover:bg-neutral-900 text-xs font-bold text-center block shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
-            >
-              Submit Proposal
-            </button>
+            hasSubmittedProposal ? (
+              <button
+                onClick={() => onTabChange('proposals')}
+                className="w-full mt-3 py-2 px-3 rounded-full bg-slate-950 text-white hover:bg-neutral-900 text-[11px] font-bold text-center block shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+              >
+                View Proposal ✓
+              </button>
+            ) : (
+              <button
+                onClick={onOpenSubmitModal}
+                className="w-full mt-3 py-2 px-3 rounded-full bg-slate-950 text-white hover:bg-neutral-900 text-[11px] font-bold text-center block shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+              >
+                Submit Proposal
+              </button>
+            )
           )}
 
           {currentRole === 'guide' && onOpenGuideMessageModal && (
             <button
               onClick={onOpenGuideMessageModal}
-              className="w-full mt-4 py-2.5 px-4 rounded-full bg-slate-950 text-white hover:bg-neutral-900 text-xs font-bold text-center block shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+              className="w-full mt-3 py-2 px-3 rounded-full bg-slate-950 text-white hover:bg-neutral-900 text-[11px] font-bold text-center block shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
             >
               Send Student Text
             </button>
@@ -529,7 +526,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
           {currentRole === 'coordinator' && (
             <button
               onClick={() => onTabChange('conflicts')}
-              className="w-full mt-4 py-2.5 px-4 rounded-full bg-slate-950 text-white hover:bg-neutral-900 text-xs font-bold text-center block shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+              className="w-full mt-3 py-2 px-3 rounded-full bg-slate-950 text-white hover:bg-neutral-900 text-[11px] font-bold text-center block shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
             >
               Arbitrate Conflicts
             </button>
@@ -538,7 +535,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
           {currentRole === 'admin' && (
             <button
               onClick={() => onTabChange('admin')}
-              className="w-full mt-4 py-2.5 px-4 rounded-full bg-slate-950 text-white hover:bg-neutral-900 text-xs font-bold text-center block shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+              className="w-full mt-3 py-2 px-3 rounded-full bg-slate-950 text-white hover:bg-neutral-900 text-[11px] font-bold text-center block shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
             >
               Manage Accounts
             </button>
@@ -561,21 +558,7 @@ export const FluxSidebar: React.FC<FluxSidebarProps> = ({
             <div>
               {/* Header with Close */}
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#D4F938] to-[#C6B5FD] flex items-center justify-center p-1.5">
-                    <svg viewBox="0 0 24 24" className="w-4 h-4 text-slate-950 fill-current">
-                      <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <span className="text-base font-extrabold tracking-tight text-white flex items-center gap-1 font-sans">
-                      DBIT <span className="text-[#D4F938]">Track</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400 block font-semibold uppercase">
-                      {currentRole} Controller
-                    </span>
-                  </div>
-                </div>
+                <Logo size="sm" roleBadge={`${currentRole.toUpperCase()} CONTROLLER`} />
 
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}

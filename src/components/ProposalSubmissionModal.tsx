@@ -23,6 +23,7 @@ import { ProjectProposal, HistoricalProject, StudentMember, UserAccount } from '
 import { scanProposalSimilarity } from '../utils/nlpSimilarity';
 import { analyzeProposalWithAi } from '../utils/geminiAi';
 import { subscribeToUsers } from '../utils/firestoreSync';
+import { Logo } from './Logo';
 
 interface ProposalSubmissionModalProps {
   isOpen: boolean;
@@ -250,11 +251,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
         {/* Dark Header with Neon-Lime Spark Logo */}
         <div className="bg-[#18191E] text-white px-6 py-4 flex items-center justify-between border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#D4F938] to-[#C6B5FD] flex items-center justify-center p-2 shadow-md shadow-[#D4F938]/20">
-              <svg viewBox="0 0 24 24" className="w-5 h-5 text-slate-950 fill-current">
-                <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" />
-              </svg>
-            </div>
+            <Logo size="sm" showText={false} />
             <div>
               <div className="flex items-center gap-2">
                 <span className="bg-[#D4F938] text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -579,7 +576,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
                   </span>
                   {aiSuggestions.length > 0 && (
                     <span className="text-emerald-600 font-bold font-sans">
-                      Novelty points ready for Coordinator Review
+                      Originality points ready for Coordinator Review
                     </span>
                   )}
                 </div>

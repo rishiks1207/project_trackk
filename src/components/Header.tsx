@@ -19,6 +19,7 @@ import {
   Cpu
 } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
+import { Logo } from './Logo';
 
 interface HeaderProps {
   currentUser: UserAccount | null;
@@ -80,29 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Main Glass Nav Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
         {/* Brand & System Title */}
-        <div className="flex items-center gap-3.5">
-          <div className="relative group">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-800 flex items-center justify-center text-white font-extrabold text-lg shadow-lg shadow-blue-500/25 border border-white/30 transition-transform duration-300 group-hover:scale-105">
-              PT
-            </div>
-            <div className="absolute -inset-0.5 bg-blue-500 rounded-2xl blur-xs opacity-30 -z-10 group-hover:opacity-50 transition-opacity" />
-          </div>
-
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
-                DBIT <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">ProjectTrack</span>
-              </h1>
-              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-800 border border-blue-500/20 backdrop-blur-xs">
-                <Cpu className="w-2.5 h-2.5 text-blue-600" />
-                <span>Similarity Check</span>
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 tracking-tight hidden sm:block">
-              Centralized Project Proposal &amp; Stage-Gate Progress Tracking Portal
-            </p>
-          </div>
-        </div>
+        <Logo size="md" variant="light" />
 
         {/* Center / Right: Glass Controller Dock & Action Buttons */}
         <div className="flex items-center flex-wrap gap-2.5">

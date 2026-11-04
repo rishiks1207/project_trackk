@@ -67,9 +67,9 @@ function getHeuristicCritique(title: string, abstract: string, conflictingTitle?
     distinctiveAngles: [
       'Contrast explicit inference latency benchmarks (e.g. sub-50ms CPU embedding generation vs server-side API roundtrips).',
       'Emphasize DBIT institutional constraints: 3-role permission boundary (Student, Guide, Coordinator) with live audit logs.',
-      'Specify multi-metric verification: Combining SBERT dense embeddings with TF-IDF n-grams to minimize both false positives and false negatives.'
+      'Specify multi-metric verification: Combining topic similarity with text overlap analysis to minimize both false positives and false negatives.'
     ],
-    suggestedPitchPhrasing: `Our submission distinguishes itself fundamentally from ${conflictingTitle || 'conventional platforms'} by addressing the root academic bottleneck identified in DBIT's cohort survey (79.2% topic overlap, 81.8% stage confusion). While existing systems rely on crude lexical string matching or manual review sheets, our architecture introduces an automated SBERT cosine similarity filter coupled with an Expert-in-the-Loop Conflict Queue. Rather than arbitrary first-come first-serve locking, our framework enforces side-by-side pitch merit defense and live GitHub milestone verification.`,
-    recommendedKeywords: ['Sentence-BERT', 'Cosine Metric', 'Stage-Gate Tracker', 'Audit Trail']
+    suggestedPitchPhrasing: `Our submission distinguishes itself fundamentally from ${conflictingTitle || 'conventional platforms'} by addressing the root academic bottleneck identified in DBIT's cohort survey (79.2% topic overlap, 81.8% stage confusion). While existing systems rely on crude manual review sheets, our architecture introduces an automated similarity filter coupled with an Expert-in-the-Loop Conflict Queue. Rather than arbitrary first-come first-serve locking, our framework enforces side-by-side pitch merit defense and live GitHub milestone verification.`,
+    recommendedKeywords: ['Topic Similarity', 'Concept Metric', 'Stage-Gate Tracker', 'Audit Trail']
   };
 }

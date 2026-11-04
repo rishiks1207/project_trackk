@@ -408,7 +408,7 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
               </span>
               <div className="space-y-1.5 text-xs">
                 {(myProposal?.githubData?.latestCommits || [
-                  { sha: 'e736a46', message: 'feat: add SBERT cosine similarity engine', author: 'Rishik', date: '2026-02-14' },
+                  { sha: 'e736a46', message: 'feat: add similarity comparison engine', author: 'Rishik', date: '2026-02-14' },
                   { sha: '98d021c', message: 'docs: finalize UML sequence diagrams', author: 'Apoorvadeep', date: '2026-02-12' }
                 ]).slice(0, 2).map((c, i) => (
                   <div key={i} className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
@@ -503,40 +503,56 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
           </div>
 
           {/* Milestone Review Columns with Highlighted Active Phase */}
-          <div className="relative z-10 pt-4 border-t border-white/10">
-            <div className="grid grid-cols-7 gap-2 sm:gap-4 items-end h-48 pb-2">
+          <div className="relative z-10 pt-4 border-t border-white/10 space-y-3">
+            {/* Bars container */}
+            <div className="grid grid-cols-7 gap-2 sm:gap-4 items-end h-36">
               {[
-                { phase: 'Exp 1: Synopsis', height: 'h-24', isHighlight: false, week: 'W1–2', status: 'Approved' },
-                { phase: 'Exp 2: Lit Review', height: 'h-32', isHighlight: false, week: 'W3–4', status: 'Approved' },
-                { phase: 'Exp 3: UML Arch', height: 'h-44', isHighlight: true, week: 'W5–6', status: 'Active Sprint' },
-                { phase: 'Exp 4: Module Specs', height: 'h-28', isHighlight: false, week: 'W7–8', status: 'Pending' },
-                { phase: 'Exp 5: SBERT Core', height: 'h-24', isHighlight: false, week: 'W9–10', status: 'Pending' },
-                { phase: 'Exp 6: Test Suite', height: 'h-32', isHighlight: false, week: 'W11–12', status: 'Pending' },
-                { phase: 'Exp 7: Final Defense', height: 'h-36', isHighlight: false, week: 'W13–14', status: 'Pending' }
+                { height: 'h-20', isHighlight: false },
+                { height: 'h-24', isHighlight: false },
+                { height: 'h-36', isHighlight: true },
+                { height: 'h-24', isHighlight: false },
+                { height: 'h-20', isHighlight: false },
+                { height: 'h-28', isHighlight: false },
+                { height: 'h-32', isHighlight: false }
               ].map((col, idx) => (
-                <div key={idx} className="flex flex-col items-center gap-2.5 group/bar cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
+                <div key={idx} className="flex flex-col items-center justify-end h-full group/bar cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
                   {col.isHighlight ? (
-                    <div className="flex items-end gap-1.5 w-full justify-center">
-                      <div className="w-5 sm:w-7 h-44 rounded-full bg-[#D4F938] shadow-lg shadow-[#D4F938]/30 transition-all duration-300 group-hover/bar:scale-105" />
-                      <div className="w-5 sm:w-7 h-36 rounded-full bg-[#C6B5FD] shadow-lg shadow-[#C6B5FD]/20 transition-all duration-300 group-hover/bar:scale-105" />
+                    <div className="flex items-end gap-1 w-full justify-center h-full">
+                      <div className="w-4 sm:w-6 h-36 rounded-full bg-[#D4F938] shadow-lg shadow-[#D4F938]/30 transition-all duration-300 group-hover/bar:scale-105" />
+                      <div className="w-4 sm:w-6 h-28 rounded-full bg-[#C6B5FD] shadow-lg shadow-[#C6B5FD]/20 transition-all duration-300 group-hover/bar:scale-105" />
                     </div>
                   ) : (
-                    <div className="w-8 sm:w-11 flex flex-col items-center">
+                    <div className="w-6 sm:w-10 flex flex-col items-center justify-end h-full">
                       <div 
-                        className={`w-full ${col.height} rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden transition-all duration-300 group-hover/bar:bg-white/10`}
+                        className={`w-full ${col.height} rounded-xl bg-white/10 border border-white/10 relative overflow-hidden transition-all duration-300 group-hover/bar:bg-white/20`}
                         style={{
                           backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.06) 5px, rgba(255,255,255,0.06) 10px)'
                         }}
                       />
                     </div>
                   )}
-                  
-                  <span className={`text-[11px] font-bold tracking-wide text-center truncate max-w-[85px] ${
-                    col.isHighlight ? 'text-[#D4F938]' : 'text-slate-400'
+                </div>
+              ))}
+            </div>
+
+            {/* Clean Labels row below bars */}
+            <div className="grid grid-cols-7 gap-2 sm:gap-4 text-center pt-2 border-t border-white/10">
+              {[
+                { phase: 'Exp 1: Synopsis', week: 'W1–2', isHighlight: false },
+                { phase: 'Exp 2: Lit Review', week: 'W3–4', isHighlight: false },
+                { phase: 'Exp 3: UML Arch', week: 'W5–6', isHighlight: true },
+                { phase: 'Exp 4: Modules', week: 'W7–8', isHighlight: false },
+                { phase: 'Exp 5: Similarity', week: 'W9–10', isHighlight: false },
+                { phase: 'Exp 6: Testing', week: 'W11–12', isHighlight: false },
+                { phase: 'Exp 7: Defense', week: 'W13–14', isHighlight: false }
+              ].map((col, idx) => (
+                <div key={idx} className="flex flex-col items-center cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
+                  <span className={`text-[10px] sm:text-[11px] font-bold tracking-tight text-center line-clamp-1 ${
+                    col.isHighlight ? 'text-[#D4F938]' : 'text-slate-300'
                   }`}>
                     {col.phase}
                   </span>
-                  <span className="text-[9px] font-mono text-slate-500">{col.week}</span>
+                  <span className="text-[9px] font-mono text-slate-400 mt-0.5">{col.week}</span>
                 </div>
               ))}
             </div>
@@ -558,7 +574,7 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-800">
                 <Cpu className="w-4 h-4 text-slate-800" />
               </div>
-              <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">SBERT Semantic Index</h3>
+              <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">Similarity Index</h3>
             </div>
             <button 
               onClick={() => onNavigateToTab('repository')}
@@ -751,7 +767,7 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-800">
                 <Percent className="w-4 h-4 text-slate-800" />
               </div>
-              <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">Cohort Novelty Rate</h3>
+              <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">Cohort Originality Rate</h3>
             </div>
             <button 
               onClick={() => onNavigateToTab('repository')}
@@ -876,39 +892,56 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
           </div>
         </div>
 
-        <div className="relative z-10 pt-4 border-t border-white/10">
-          <div className="grid grid-cols-7 gap-2 sm:gap-4 items-end h-52 pb-2">
+        <div className="relative z-10 pt-4 border-t border-white/10 space-y-3">
+          {/* Bars container */}
+          <div className="grid grid-cols-7 gap-2 sm:gap-4 items-end h-36">
             {[
-              { phase: 'Exp 1: Synopsis', height: 'h-24', isHighlight: false, week: 'W1–2' },
-              { phase: 'Exp 2: Lit Review', height: 'h-32', isHighlight: false, week: 'W3–4' },
-              { phase: 'Exp 3: Survey', height: 'h-20', isHighlight: false, week: 'W5–6' },
-              { phase: 'Exp 4: Arch ↗', height: 'h-44', isHighlight: true, week: 'W7–8' },
-              { phase: 'Exp 5: SBERT Core', height: 'h-28', isHighlight: false, week: 'W9–10' },
-              { phase: 'Exp 6: Testing', height: 'h-36', isHighlight: false, week: 'W11–12' },
-              { phase: 'Exp 7: Final Defense', height: 'h-32', isHighlight: false, week: 'W13–14' }
+              { height: 'h-20', isHighlight: false },
+              { height: 'h-24', isHighlight: false },
+              { height: 'h-16', isHighlight: false },
+              { height: 'h-36', isHighlight: true },
+              { height: 'h-24', isHighlight: false },
+              { height: 'h-28', isHighlight: false },
+              { height: 'h-24', isHighlight: false }
             ].map((col, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-3 group/bar">
+              <div key={idx} className="flex flex-col items-center justify-end h-full group/bar cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
                 {col.isHighlight ? (
-                  <div className="flex items-end gap-1.5 w-full justify-center">
-                    <div className="w-5 sm:w-7 h-44 rounded-full bg-[#D4F938] shadow-lg shadow-[#D4F938]/30 transition-all duration-300 group-hover/bar:scale-105" />
-                    <div className="w-5 sm:w-7 h-36 rounded-full bg-[#C6B5FD] shadow-lg shadow-[#C6B5FD]/20 transition-all duration-300 group-hover/bar:scale-105" />
+                  <div className="flex items-end gap-1 w-full justify-center h-full">
+                    <div className="w-4 sm:w-6 h-36 rounded-full bg-[#D4F938] shadow-lg shadow-[#D4F938]/30 transition-all duration-300 group-hover/bar:scale-105" />
+                    <div className="w-4 sm:w-6 h-28 rounded-full bg-[#C6B5FD] shadow-lg shadow-[#C6B5FD]/20 transition-all duration-300 group-hover/bar:scale-105" />
                   </div>
                 ) : (
-                  <div className="w-8 sm:w-11 flex flex-col items-center">
+                  <div className="w-6 sm:w-10 flex flex-col items-center justify-end h-full">
                     <div 
-                      className={`w-full ${col.height} rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden transition-all duration-300 group-hover/bar:bg-white/10`}
+                      className={`w-full ${col.height} rounded-xl bg-white/10 border border-white/10 relative overflow-hidden transition-all duration-300 group-hover/bar:bg-white/20`}
                       style={{
                         backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.06) 5px, rgba(255,255,255,0.06) 10px)'
                       }}
                     />
                   </div>
                 )}
-                
-                <span className={`text-[11px] font-semibold tracking-wide text-center truncate max-w-[85px] ${
-                  col.isHighlight ? 'text-[#D4F938] font-bold' : 'text-slate-400'
+              </div>
+            ))}
+          </div>
+
+          {/* Clean Labels row below bars */}
+          <div className="grid grid-cols-7 gap-2 sm:gap-4 text-center pt-2 border-t border-white/10">
+            {[
+              { phase: 'Exp 1: Synopsis', week: 'W1–2', isHighlight: false },
+              { phase: 'Exp 2: Lit Review', week: 'W3–4', isHighlight: false },
+              { phase: 'Exp 3: Survey', week: 'W5–6', isHighlight: false },
+              { phase: 'Exp 4: Arch ↗', week: 'W7–8', isHighlight: true },
+              { phase: 'Exp 5: Similarity', week: 'W9–10', isHighlight: false },
+              { phase: 'Exp 6: Testing', week: 'W11–12', isHighlight: false },
+              { phase: 'Exp 7: Defense', week: 'W13–14', isHighlight: false }
+            ].map((col, idx) => (
+              <div key={idx} className="flex flex-col items-center cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
+                <span className={`text-[10px] sm:text-[11px] font-bold tracking-tight text-center line-clamp-1 ${
+                  col.isHighlight ? 'text-[#D4F938]' : 'text-slate-300'
                 }`}>
                   {col.phase}
                 </span>
+                <span className="text-[9px] font-mono text-slate-400 mt-0.5">{col.week}</span>
               </div>
             ))}
           </div>
