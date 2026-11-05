@@ -76,7 +76,8 @@ import {
   INITIAL_GUIDE_MESSAGES,
   saveProposalToFirestore, 
   saveArchiveProjectToFirestore,
-  updateMilestoneInFirestore 
+  updateMilestoneInFirestore,
+  saveUserToFirestore
 } from './utils/firestoreSync';
 
 export default function App() {
@@ -300,14 +301,23 @@ export default function App() {
   };
 
   // Student's scoped proposal based on logged-in student account
-  const studentProposal = proposals.find(p => 
-    (currentUser?.groupNo && p.groupNo === currentUser.groupNo && (!currentUser.trackNo || p.trackNo === currentUser.trackNo)) ||
-    (p.teamMembers && p.teamMembers.some(m => 
-      (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase()) ||
-      (currentUser?.name && m.name && m.name.toLowerCase() === currentUser.name.toLowerCase()) ||
-      (currentUser?.rollNo && m.rollNo && m.rollNo === currentUser.rollNo)
-    ))
-  );
+  const studentProposal = proposals.find(p => {
+    if (!currentUser) return false;
+    const groupMatch = Boolean(
+      currentUser.groupNo !== undefined && currentUser.groupNo !== null &&
+      p.groupNo !== undefined && p.groupNo !== null &&
+      Number(p.groupNo) === Number(currentUser.groupNo) &&
+      (!currentUser.trackNo || !p.trackNo || Number(p.trackNo) === Number(currentUser.trackNo))
+    );
+    const memberMatch = Boolean(
+      p.teamMembers && p.teamMembers.some(m => 
+        (currentUser.email && m.email && m.email.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
+        (currentUser.name && m.name && m.name.toLowerCase().trim() === currentUser.name.toLowerCase().trim()) ||
+        (currentUser.rollNo && m.rollNo && String(m.rollNo).trim() === String(currentUser.rollNo).trim())
+      )
+    );
+    return groupMatch || memberMatch;
+  });
 
   const hasSubmittedProposal = currentRole === 'student' && Boolean(studentProposal);
 
@@ -319,9 +329,9 @@ export default function App() {
     setIsSubmitModalOpen(true);
   };
 
-  const activeProposal = proposals.find(p => p.id === selectedProposalId) || 
-    (currentRole === 'student' ? studentProposal : undefined) || 
-    proposals[0];
+  const activeProposal = selectedProposalId
+    ? proposals.find(p => p.id === selectedProposalId)
+    : (currentRole === 'student' ? studentProposal : (proposals[0] || undefined));
 
   // Count conflicts
   const conflictCount = proposals.filter(
@@ -379,8 +389,9 @@ export default function App() {
       teamMembers: defaultTeam,
       guideName: newProp.guideName || 'Mr. Nazareth Remedios',
       coordinatorName: newProp.coordinatorName || 'Prof. Meenal Kulkarni',
-      status: (newProp.similarityData?.isConflict) ? 'flagged_conflict' : 'submitted',
+      status: newProp.status || ((newProp.similarityData?.isConflict) ? 'flagged_conflict' : 'submitted'),
       lockedTopic: false,
+      pitchDefense: newProp.pitchDefense || undefined,
       similarityData: newProp.similarityData || {
         overallScore: 0.18,
         sbertScore: 0.20,
@@ -468,18 +479,31 @@ export default function App() {
       updatedAt: new Date().toISOString()
     };
 
-    setProposals([fullProposal, ...proposals]);
+    setProposals(prev => [fullProposal, ...prev.filter(p => p.id !== id)]);
     setSelectedProposalId(id);
     setIsSubmitModalOpen(false);
     setActiveTab('proposals');
 
-    // Save to PostgreSQL backend & Firestore
+    // 1. Save to Cloud Firestore database & Local mirror
+    saveProposalToFirestore(fullProposal);
+
+    // 2. Update user profile project count in Firestore and local state
+    if (currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        assignedProjectCount: (currentUser.assignedProjectCount || 0) + 1,
+        relatedProposalTitle: fullProposal.title
+      };
+      saveUserToFirestore(updatedUser);
+      setCurrentUser(updatedUser);
+    }
+
+    // 3. Save to backend API
     fetch('/api/proposals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(fullProposal)
     }).catch(e => console.warn('Database async sync notice:', e));
-    saveProposalToFirestore(fullProposal);
 
     showToast(`Project Proposal "${fullProposal.title}" registered successfully!`);
   };
@@ -555,7 +579,8 @@ export default function App() {
   };
 
   const handleSendReminder = () => {
-    showToast(`Automated reminder alert dispatched to Guide (${activeProposal.guideName}) and Coordinator (${activeProposal.coordinatorName}).`);
+    if (!activeProposal) return;
+    showToast(`Automated reminder alert dispatched to Guide (${activeProposal.guideName || 'Faculty Guide'}) and Coordinator (${activeProposal.coordinatorName || 'Coordinator'}).`);
   };
 
   const handleArbitrateConflict = (
@@ -709,13 +734,17 @@ export default function App() {
   const filteredProposals = proposals.filter(p => {
     // 0. Student Visibility Constraint: Students can ONLY see their own proposal if it exists!
     if (currentRole === 'student') {
-      const isMine = 
-        (currentUser?.groupNo && p.groupNo === currentUser.groupNo && (!currentUser.trackNo || p.trackNo === currentUser.trackNo)) ||
+      const isMine = Boolean(
+        (currentUser?.groupNo !== undefined && currentUser?.groupNo !== null &&
+          p.groupNo !== undefined && p.groupNo !== null &&
+          Number(p.groupNo) === Number(currentUser.groupNo) &&
+          (!currentUser.trackNo || !p.trackNo || Number(p.trackNo) === Number(currentUser.trackNo))) ||
         (p.teamMembers && p.teamMembers.some(m => 
-          (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase()) ||
-          (currentUser?.name && m.name && m.name.toLowerCase() === currentUser.name.toLowerCase()) ||
-          (currentUser?.rollNo && m.rollNo && m.rollNo === currentUser.rollNo)
-        ));
+          (currentUser?.email && m.email && m.email.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
+          (currentUser?.name && m.name && m.name.toLowerCase().trim() === currentUser.name.toLowerCase().trim()) ||
+          (currentUser?.rollNo && m.rollNo && String(m.rollNo).trim() === String(currentUser.rollNo).trim())
+        ))
+      );
       if (!isMine) return false;
     }
 
@@ -1586,9 +1615,22 @@ export default function App() {
               {/* Proposals Cards */}
               <div className="space-y-4">
                 {sortedProposals.length === 0 ? (
-                  <div className="bg-white rounded-[28px] p-8 text-center border border-slate-200/80 shadow-xs">
-                    <p className="text-sm font-bold text-slate-700">No project proposals match the selected filters.</p>
-                    <p className="text-xs text-slate-400 mt-1">Try resetting the status filter or search query.</p>
+                  <div className="bg-white rounded-[28px] p-8 text-center border border-slate-200/80 shadow-xs space-y-3">
+                    <p className="text-sm font-bold text-slate-700">
+                      {currentRole === 'student' ? 'No project proposal submitted yet for your student profile.' : 'No project proposals match the selected filters.'}
+                    </p>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                      {currentRole === 'student' ? 'Click below to register your team, project title, and faculty guide to initiate topic similarity analysis and milestone tracking.' : 'Try resetting the status filter or search query.'}
+                    </p>
+                    {currentRole === 'student' && (
+                      <button
+                        onClick={() => setIsSubmitModalOpen(true)}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-black text-xs font-black shadow-xs cursor-pointer transition-all"
+                      >
+                        <PlusCircle className="w-4 h-4" />
+                        <span>Submit Project Proposal</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   sortedProposals.map((prop) => {
@@ -1758,7 +1800,7 @@ export default function App() {
                     <span>Submit Project Proposal</span>
                   </button>
                 </div>
-              ) : (
+              ) : activeProposal ? (
                 <StageGateTracker
                   proposal={activeProposal}
                   currentRole={currentRole}
@@ -1768,7 +1810,7 @@ export default function App() {
                   onSelectProposal={setSelectedProposalId}
                   onNavigateToProposals={() => setActiveTab('proposals')}
                 />
-              )}
+              ) : null}
             </div>
           )}
 
@@ -1873,14 +1915,16 @@ export default function App() {
         currentUser={currentUser}
       />
 
-      <FeedbackLogModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => setIsFeedbackModalOpen(false)}
-        proposal={activeProposal}
-        currentRole={currentRole}
-        onAddFeedback={handleAddFeedback}
-        onSendReminder={handleSendReminder}
-      />
+      {activeProposal && (
+        <FeedbackLogModal
+          isOpen={isFeedbackModalOpen}
+          onClose={() => setIsFeedbackModalOpen(false)}
+          proposal={activeProposal}
+          currentRole={currentRole}
+          onAddFeedback={handleAddFeedback}
+          onSendReminder={handleSendReminder}
+        />
+      )}
 
       <PresentationViewerModal
         isOpen={isPresentationModalOpen}
@@ -1893,7 +1937,7 @@ export default function App() {
           onClose={() => setIsGuideMessageModalOpen(false)}
           senderName={currentUser?.name || 'Faculty Guide'}
           senderRole={currentRole === 'coordinator' ? 'coordinator' : 'guide'}
-          defaultGroupNo={activeProposal.groupNo || 5}
+          defaultGroupNo={activeProposal?.groupNo || currentUser?.groupNo || 5}
           onMessageSent={(msg) => showToast(`Faculty guide notice broadcasted: "${msg.subject}"`)}
         />
       )}

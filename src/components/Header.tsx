@@ -64,7 +64,15 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-mono text-blue-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Track 7 · Group 05</span>
+              <span>
+                {currentUser?.role === 'student'
+                  ? (currentUser.groupNo
+                      ? `Track ${currentUser.trackNo || 7} · Group ${String(currentUser.groupNo).padStart(2, '0')}`
+                      : (currentUser.cohort || 'SE Mini Project-I'))
+                  : (currentUser?.role === 'guide'
+                      ? 'Faculty Guide Portal'
+                      : (currentUser?.role === 'coordinator' ? 'Coordinator Portal' : 'Admin Authority'))}
+              </span>
             </div>
 
             <button

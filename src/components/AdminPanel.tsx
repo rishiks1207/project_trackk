@@ -47,6 +47,37 @@ interface AdminPanelProps {
   onNavigateToTab: (tab: string) => void;
   onUpdateProposal?: (proposal: ProjectProposal) => void;
 }
+const AddBatchInput: React.FC<{
+  onAdd: (name: string) => void;
+}> = ({ onAdd }) => {
+  const [val, setVal] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!val.trim()) return;
+    onAdd(val.trim());
+    setVal('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="pt-2 border-t border-slate-100 flex items-center gap-1.5 w-full">
+      <input
+        type="text"
+        placeholder="Add batch (e.g. Batch D)"
+        value={val}
+        onChange={e => setVal(e.target.value)}
+        className="bg-white text-slate-900 placeholder:text-slate-400 rounded-xl px-3 py-1.5 text-xs border border-slate-300 font-bold flex-1 focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
+      />
+      <button
+        type="submit"
+        disabled={!val.trim()}
+        className="bg-[#18191E] hover:bg-black text-white text-[11px] font-bold px-3 py-1.5 rounded-xl disabled:opacity-40 transition-all cursor-pointer shrink-0"
+      >
+        + Batch
+      </button>
+    </form>
+  );
+};
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   proposals,
@@ -420,9 +451,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setSuccessMsg(`Class "${className}" removed.`);
   };
 
-  const handleAddBatch = (yearKey: string, classId: string) => {
-    if (!newBatchName.trim()) return;
-    const trimmed = newBatchName.trim();
+  const handleAddBatch = (yearKey: string, classId: string, customBatchName?: string) => {
+    const raw = customBatchName !== undefined ? customBatchName : newBatchName;
+    if (!raw.trim()) return;
+    const trimmed = raw.trim();
     const updated = academicStructure.map(y => {
       if (y.yearKey !== yearKey) return y;
       return {
@@ -431,7 +463,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           if (c.id !== classId) return c;
           return {
             ...c,
-            batches: [...c.batches, { id: `b-${Date.now()}`, name: trimmed }]
+            batches: [...c.batches, { id: `b-${Date.now()}-${Math.floor(Math.random() * 1000)}`, name: trimmed }]
           };
         })
       };
@@ -1220,27 +1252,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
 
                         {/* Add Batch to this Class */}
-                        <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            placeholder="Add batch (e.g. Batch D)"
-                            value={activeClassForBatch === cls.id ? newBatchName : ''}
-                            onFocus={() => setActiveClassForBatch(cls.id)}
-                            onChange={e => {
-                              setActiveClassForBatch(cls.id);
-                              setNewBatchName(e.target.value);
-                            }}
-                            className="bg-[#F8F9FA] rounded-xl px-2.5 py-1 text-[11px] border border-slate-200 font-medium flex-1 focus:outline-hidden"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleAddBatch(currentYearObj.yearKey, cls.id)}
-                            disabled={activeClassForBatch !== cls.id || !newBatchName.trim()}
-                            className="bg-[#18191E] text-white hover:bg-black text-[10px] font-bold px-3 py-1.5 rounded-xl disabled:opacity-40 transition-all cursor-pointer"
-                          >
-                            + Batch
-                          </button>
-                        </div>
+                        <AddBatchInput
+                          onAdd={(batchName) => handleAddBatch(currentYearObj.yearKey, cls.id, batchName)}
+                        />
                       </div>
                     ))}
                   </div>
@@ -1382,8 +1396,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <form onSubmit={handleCreateAccount} className="p-6 bg-[#F4F5F8] rounded-[26px] space-y-4 text-xs m-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Full Name <span className="text-red-500">*</span>
+                  <label className="block font-bold text-slate-900 mb-1">
+                    Full Name <span className="text-red-500 font-black">*</span>
                   </label>
                   <input
                     type="text"
@@ -1391,13 +1405,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="e.g. Apoorvadeep Sinha"
-                    className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                    className="w-full bg-white text-slate-900 placeholder:text-slate-400 rounded-2xl px-4 py-2.5 border border-slate-300 font-semibold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Institutional Email <span className="text-red-500">*</span>
+                  <label className="block font-bold text-slate-900 mb-1">
+                    Institutional Email <span className="text-red-500 font-black">*</span>
                   </label>
                   <input
                     type="email"
@@ -1405,20 +1419,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="e.g. student@dbit.in"
-                    className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                    className="w-full bg-white text-slate-900 placeholder:text-slate-400 rounded-2xl px-4 py-2.5 border border-slate-300 font-semibold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Account Role <span className="text-red-500">*</span>
+                  <label className="block font-bold text-slate-900 mb-1">
+                    Account Role <span className="text-red-500 font-black">*</span>
                   </label>
                   <select
                     value={role}
                     onChange={e => setRole(e.target.value as any)}
-                    className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-bold text-slate-800 focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                    className="w-full bg-white text-slate-900 rounded-2xl px-4 py-2.5 border border-slate-300 font-bold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                   >
                     <option value="student">Student (Submit &amp; Similarity Check)</option>
                     <option value="guide">Faculty Guide (Review &amp; Sign-off)</option>
@@ -1428,7 +1442,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
+                  <label className="block font-bold text-slate-900 mb-1">
                     Initial Password
                   </label>
                   <input
@@ -1436,36 +1450,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="dbit2026"
-                    className="w-full bg-white rounded-2xl px-4 py-2.5 border border-slate-200 font-mono font-bold focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                    className="w-full bg-white text-slate-900 placeholder:text-slate-400 rounded-2xl px-4 py-2.5 border border-slate-300 font-mono font-bold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                   />
                 </div>
               </div>
 
               {/* Conditional fields based on role */}
               {role === 'student' && (
-                <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3">
-                  <span className="font-bold text-slate-900 block text-xs">
+                <div className="p-4 bg-white rounded-2xl border border-slate-300 space-y-3">
+                  <span className="font-extrabold text-slate-900 block text-xs">
                     Academic Year, Class &amp; Batch Assignment
                   </span>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Roll No.</label>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Roll No.</label>
                       <input
                         type="text"
                         value={rollNo}
                         onChange={e => setRollNo(e.target.value)}
                         placeholder="e.g. 01"
-                        className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono text-xs"
+                        className="w-full bg-white text-slate-900 placeholder:text-slate-400 rounded-xl px-3 py-2 border border-slate-300 font-mono text-xs font-bold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Group No.</label>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Group No.</label>
                       <input
                         type="number"
                         value={groupNo}
                         onChange={e => setGroupNo(parseInt(e.target.value) || 1)}
-                        className="w-full bg-[#F4F5F8] rounded-xl px-3 py-1.5 border border-slate-200 font-mono text-xs"
+                        className="w-full bg-white text-slate-900 placeholder:text-slate-400 rounded-xl px-3 py-2 border border-slate-300 font-mono text-xs font-bold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                       />
                     </div>
                   </div>
@@ -1473,7 +1487,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   {/* Year -> Class -> Batch dropdown cascade */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Academic Year</label>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Academic Year</label>
                       <select
                         value={createYear}
                         onChange={e => {
@@ -1487,7 +1501,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             }
                           }
                         }}
-                        className="w-full bg-[#F4F5F8] rounded-xl px-2.5 py-1.5 border border-slate-200 font-bold text-xs"
+                        className="w-full bg-white text-slate-900 rounded-xl px-2.5 py-2 border border-slate-300 font-bold text-xs focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                       >
                         {academicStructure.map(y => (
                           <option key={y.yearKey} value={y.yearKey}>{y.yearName}</option>
@@ -1496,7 +1510,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Class / Division</label>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Class / Division</label>
                       <select
                         value={createClass}
                         onChange={e => {
@@ -1508,7 +1522,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             setCreateBatch(cObj.batches[0].name);
                           }
                         }}
-                        className="w-full bg-[#F4F5F8] rounded-xl px-2.5 py-1.5 border border-slate-200 font-bold text-xs"
+                        className="w-full bg-white text-slate-900 rounded-xl px-2.5 py-2 border border-slate-300 font-bold text-xs focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                       >
                         {(academicStructure.find(y => y.yearKey === createYear)?.classes || []).map(c => (
                           <option key={c.id} value={c.name}>{c.name}</option>
@@ -1517,11 +1531,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Batch</label>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Batch</label>
                       <select
                         value={createBatch}
                         onChange={e => setCreateBatch(e.target.value)}
-                        className="w-full bg-[#F4F5F8] rounded-xl px-2.5 py-1.5 border border-slate-200 font-bold text-xs"
+                        className="w-full bg-white text-slate-900 rounded-xl px-2.5 py-2 border border-slate-300 font-bold text-xs focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                       >
                         {((academicStructure.find(y => y.yearKey === createYear)?.classes || [])
                           .find(c => c.name === createClass)?.batches || []).map(b => (
@@ -1531,7 +1545,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  <div className="text-[10px] font-mono text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-200/60 flex items-center justify-between">
+                  <div className="text-[11px] font-mono text-slate-700 bg-slate-100 p-2.5 rounded-xl border border-slate-300 flex items-center justify-between">
                     <span>Generated Cohort:</span>
                     <strong className="text-black font-black">{createYear} {createClass} ({createBatch})</strong>
                   </div>

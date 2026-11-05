@@ -190,7 +190,36 @@ function savePersistedUsers(usersToSave: any[]) {
 
 let memoryUsers: any[] = loadPersistedUsers();
 
-let memoryProposals: any[] = JSON.parse(JSON.stringify(INITIAL_PROPOSALS));
+const PERSISTED_PROPOSALS_FILE = path.join(process.cwd(), 'src', 'data', 'persisted_proposals.json');
+
+function loadPersistedProposals(): any[] {
+  try {
+    if (fs.existsSync(PERSISTED_PROPOSALS_FILE)) {
+      const raw = fs.readFileSync(PERSISTED_PROPOSALS_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read persisted proposals file:', err);
+  }
+  return JSON.parse(JSON.stringify(INITIAL_PROPOSALS));
+}
+
+function savePersistedProposals(proposalsToSave: any[]) {
+  try {
+    const dir = path.dirname(PERSISTED_PROPOSALS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(PERSISTED_PROPOSALS_FILE, JSON.stringify(proposalsToSave, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Could not save persisted proposals file:', err);
+  }
+}
+
+let memoryProposals: any[] = loadPersistedProposals();
 let memoryHistorical: any[] = JSON.parse(JSON.stringify(INITIAL_HISTORICAL_PROJECTS));
 let memoryMessages: any[] = [
   {
@@ -616,7 +645,13 @@ export async function insertProposal(proposalData: any) {
     }
   }
 
-  memoryProposals.unshift(proposalData);
+  const existingIdx = memoryProposals.findIndex(item => item.id === proposalData.id);
+  if (existingIdx !== -1) {
+    memoryProposals[existingIdx] = { ...memoryProposals[existingIdx], ...proposalData };
+  } else {
+    memoryProposals.unshift(proposalData);
+  }
+  savePersistedProposals(memoryProposals);
   return proposalData;
 }
 
@@ -636,6 +671,7 @@ export async function updateProposalStatus(id: string, status: string, lockedTop
   if (p) {
     p.status = status;
     if (lockedTopic !== undefined) p.lockedTopic = lockedTopic;
+    savePersistedProposals(memoryProposals);
     return p;
   }
   return { id, status, lockedTopic };
@@ -656,6 +692,7 @@ export async function updateStageGate(id: string, updates: any) {
       const g = p.stageGates.find((sg: any) => sg.id === id);
       if (g) {
         Object.assign(g, updates);
+        savePersistedProposals(memoryProposals);
         return g;
       }
     }

@@ -181,7 +181,7 @@ export const AnalyticsAndGantt: React.FC = () => {
                 Project Implementation Schedule: 14-Week Milestone Gantt Chart
               </h3>
               <p className="text-xs text-zinc-500">
-                Academic Year 2026–27 | SE Mini Project-I | Track 7 Group 05
+                Academic Year 2026–27 | SE Mini Project-I | DBIT Computer Engineering 14-Week Schedule
               </p>
             </div>
             <span className="text-xs font-mono bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-200">

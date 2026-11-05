@@ -244,12 +244,12 @@ export function scanProposalSimilarity(
     overallScore: highestScore,
     sbertScore: bestScores.topicSim,
     tfidfScore: bestScores.textSim,
-    matchedProjectId: bestMatch?.id,
-    matchedProjectTitle: bestMatch?.title,
-    matchedProjectYear: bestMatch?.academicYear,
+    matchedProjectId: bestMatch?.id || '',
+    matchedProjectTitle: bestMatch?.title || '',
+    matchedProjectYear: bestMatch?.academicYear || '',
     matchedSnippets,
     isConflict,
     explanation,
-    aiNoveltySuggestions: aiNoveltySuggestions.length > 0 ? aiNoveltySuggestions : undefined
+    aiNoveltySuggestions: aiNoveltySuggestions.length > 0 ? aiNoveltySuggestions : []
   };
 }

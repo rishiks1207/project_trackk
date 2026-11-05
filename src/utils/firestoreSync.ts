@@ -310,7 +310,78 @@ function sanitizeProposal(p: ProjectProposal): ProjectProposal {
 }
 
 /**
+ * Recursively removes all undefined keys and converts non-serializable elements
+ * to guarantee 100% compliance with Firestore SDK specifications.
+ */
+export function sanitizeForFirestore<T>(input: T): T {
+  if (input === null || input === undefined) {
+    return null as any;
+  }
+  if (Array.isArray(input)) {
+    return input
+      .filter(item => item !== undefined)
+      .map(item => sanitizeForFirestore(item)) as any;
+  }
+  if (typeof input === 'object') {
+    if (input instanceof Date) {
+      return input.toISOString() as any;
+    }
+    const sanitized: Record<string, any> = {};
+    for (const [key, val] of Object.entries(input)) {
+      if (val !== undefined) {
+        sanitized[key] = sanitizeForFirestore(val);
+      }
+    }
+    return sanitized as any;
+  }
+  return input;
+}
+
+/**
+ * Ensures a document is a clean, plain JSON object with zero undefined keys at any nesting depth.
+ */
+export function deepCleanDoc<T>(data: T): T {
+  const sanitized = sanitizeForFirestore(data);
+  try {
+    return JSON.parse(JSON.stringify(sanitized));
+  } catch {
+    return sanitized;
+  }
+}
+
+const PROPOSALS_STORAGE_KEY = 'dbit_custom_proposals';
+
+export function getLocalCachedProposals(): ProjectProposal[] {
+  try {
+    const raw = localStorage.getItem(PROPOSALS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return [];
+}
+
+export function cacheProposalLocally(proposal: ProjectProposal): void {
+  try {
+    const existing = getLocalCachedProposals();
+    const idx = existing.findIndex(p => p.id === proposal.id || (p.groupNo === proposal.groupNo && p.cohort === proposal.cohort));
+    if (idx !== -1) {
+      existing[idx] = { ...existing[idx], ...proposal };
+    } else {
+      existing.unshift(proposal);
+    }
+    localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(existing));
+  } catch (e) {
+    // ignore
+  }
+}
+
+/**
  * Subscribes to real-time changes in proposals collection (individual projects).
+ * Seamlessly merges Firestore documents with locally submitted proposals for bulletproof persistence.
  */
 export function subscribeToProposals(
   callback: (proposals: ProjectProposal[]) => void
@@ -320,22 +391,60 @@ export function subscribeToProposals(
     const unsubscribe = onSnapshot(
       proposalsRef, 
       (snapshot) => {
+        const firestoreList: ProjectProposal[] = [];
         if (!snapshot.empty) {
-          const list: ProjectProposal[] = [];
           snapshot.forEach((d) => {
             const raw = d.data() as ProjectProposal;
-            list.push(sanitizeProposal(raw));
+            firestoreList.push(sanitizeProposal(raw));
           });
-          callback(list);
         }
+
+        // Merge with any locally stored custom proposals so newly created proposals never disappear
+        const localCached = getLocalCachedProposals();
+        const mergedMap = new Map<string, ProjectProposal>();
+
+        // 1. Initial/seed proposals as base
+        INITIAL_PROPOSALS.forEach(p => mergedMap.set(p.id, p));
+
+        // 2. Authoritative Firestore documents
+        firestoreList.forEach(p => mergedMap.set(p.id, p));
+
+        // 3. Local cached proposals
+        localCached.forEach(p => {
+          if (!mergedMap.has(p.id)) {
+            mergedMap.set(p.id, p);
+            // Self-heal: sync missing proposal to Firestore in background
+            saveProposalToFirestore(p);
+          }
+        });
+
+        const mergedList = Array.from(mergedMap.values());
+        // Sort newest first
+        mergedList.sort((a, b) => {
+          const tA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const tB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return tB - tA;
+        });
+
+        callback(mergedList);
       },
       (err) => {
-        console.warn('Firestore proposals snapshot listener error:', err);
+        console.warn('Firestore proposals snapshot listener notice (falling back to cache):', err);
+        const localCached = getLocalCachedProposals();
+        const mergedMap = new Map<string, ProjectProposal>();
+        INITIAL_PROPOSALS.forEach(p => mergedMap.set(p.id, p));
+        localCached.forEach(p => mergedMap.set(p.id, p));
+        callback(Array.from(mergedMap.values()));
       }
     );
     return unsubscribe;
   } catch (err) {
     console.warn('Could not establish Firestore proposals listener:', err);
+    const localCached = getLocalCachedProposals();
+    const mergedMap = new Map<string, ProjectProposal>();
+    INITIAL_PROPOSALS.forEach(p => mergedMap.set(p.id, p));
+    localCached.forEach(p => mergedMap.set(p.id, p));
+    callback(Array.from(mergedMap.values()));
     return () => {};
   }
 }
@@ -401,14 +510,22 @@ export function subscribeToUsers(
 }
 
 /**
- * Saves or updates an individual project proposal in Firestore.
+ * Saves or updates an individual project proposal in Firestore and caches locally.
  */
-export async function saveProposalToFirestore(proposal: ProjectProposal): Promise<void> {
+export async function saveProposalToFirestore(proposal: ProjectProposal): Promise<boolean> {
+  const cleaned = deepCleanDoc(proposal);
+  
+  // 1. Instant local mirror to guarantee persistence across refresh and logout
+  cacheProposalLocally(cleaned);
+
+  // 2. Write to Cloud Firestore database
   try {
     const ref = doc(db, PROPOSALS_COLLECTION, proposal.id);
-    await setDoc(ref, proposal, { merge: true });
+    await setDoc(ref, cleaned, { merge: true });
+    return true;
   } catch (err) {
-    console.warn('Failed to save proposal to Firestore:', err);
+    console.error('Failed to save proposal to Firestore:', err);
+    return false;
   }
 }
 
@@ -416,12 +533,13 @@ export async function saveProposalToFirestore(proposal: ProjectProposal): Promis
  * Saves or updates a project in the project archive.
  */
 export async function saveArchiveProjectToFirestore(project: HistoricalProject): Promise<void> {
+  const cleaned = deepCleanDoc(project);
   try {
     const ref1 = doc(db, ARCHIVE_COLLECTION, project.id);
     const ref2 = doc(db, HISTORICAL_COLLECTION, project.id);
     await Promise.all([
-      setDoc(ref1, project, { merge: true }),
-      setDoc(ref2, project, { merge: true })
+      setDoc(ref1, cleaned, { merge: true }),
+      setDoc(ref2, cleaned, { merge: true })
     ]);
   } catch (err) {
     console.warn('Failed to save archive project to Firestore:', err);
@@ -432,10 +550,11 @@ export async function saveArchiveProjectToFirestore(project: HistoricalProject):
  * Saves or updates a user account in Firestore.
  */
 export async function saveUserToFirestore(user: UserAccount & { password?: string }): Promise<void> {
+  const cleaned = deepCleanDoc(user);
   try {
     const docId = user.uid || String(user.id);
     const ref = doc(db, USERS_COLLECTION, docId);
-    await setDoc(ref, user, { merge: true });
+    await setDoc(ref, cleaned, { merge: true });
   } catch (err) {
     console.warn('Failed to save user to Firestore:', err);
   }
@@ -450,9 +569,9 @@ export async function saveUserToFirestore(user: UserAccount & { password?: strin
       (u.id && user.id && u.id === user.id)
     );
     if (existingIdx !== -1) {
-      localUsers[existingIdx] = { ...localUsers[existingIdx], ...user };
+      localUsers[existingIdx] = { ...localUsers[existingIdx], ...cleaned };
     } else {
-      localUsers.unshift(user);
+      localUsers.unshift(cleaned);
     }
     localStorage.setItem('dbit_admin_users', JSON.stringify(localUsers));
   } catch (e) {
@@ -492,21 +611,35 @@ export async function updateMilestoneInFirestore(
   proposalId: string, 
   milestone: StageGateMilestone
 ): Promise<void> {
+  const cleanedMilestone = deepCleanDoc(milestone);
   try {
     const ref = doc(db, PROPOSALS_COLLECTION, proposalId);
     const snap = await getDocs(collection(db, PROPOSALS_COLLECTION));
-    snap.forEach(async (d) => {
+    for (const d of snap.docs) {
       if (d.id === proposalId) {
         const prop = d.data() as ProjectProposal;
         const updatedGates = (prop.stageGates || []).map((m: StageGateMilestone) => 
-          m.id === milestone.id ? { ...m, ...milestone } : m
+          m.id === milestone.id ? { ...m, ...cleanedMilestone } : m
         );
-        await updateDoc(ref, { stageGates: updatedGates });
+        await updateDoc(ref, { stageGates: deepCleanDoc(updatedGates) });
+        break;
       }
-    });
+    }
   } catch (err) {
     console.warn('Failed to update milestone in Firestore:', err);
   }
+
+  // Also update local proposals cache
+  try {
+    const localProps = getLocalCachedProposals();
+    const targetProp = localProps.find(p => p.id === proposalId);
+    if (targetProp && targetProp.stageGates) {
+      targetProp.stageGates = targetProp.stageGates.map(m => 
+        m.id === milestone.id ? { ...m, ...cleanedMilestone } : m
+      );
+      localStorage.setItem('dbit_custom_proposals', JSON.stringify(localProps));
+    }
+  } catch (e) {}
 }
 
 /**
@@ -559,9 +692,10 @@ export function subscribeToGuideMessages(
  * Saves a new guide message to Firestore (and caches to localStorage).
  */
 export async function saveGuideMessageToFirestore(message: GuideMessage): Promise<void> {
+  const cleaned = deepCleanDoc(message);
   try {
     const ref = doc(db, MESSAGES_COLLECTION, message.id);
-    await setDoc(ref, message, { merge: true });
+    await setDoc(ref, cleaned, { merge: true });
   } catch (err) {
     console.warn('Failed to save message to Firestore:', err);
   }
@@ -571,7 +705,7 @@ export async function saveGuideMessageToFirestore(message: GuideMessage): Promis
     const cachedStr = localStorage.getItem('dbit_guide_messages');
     const existing: GuideMessage[] = cachedStr ? JSON.parse(cachedStr) : [...INITIAL_GUIDE_MESSAGES];
     const filtered = existing.filter(m => m.id !== message.id);
-    const updated = [message, ...filtered];
+    const updated = [cleaned, ...filtered];
     localStorage.setItem('dbit_guide_messages', JSON.stringify(updated));
   } catch (e) {}
 }
@@ -583,6 +717,7 @@ export async function addReplyToGuideMessageInFirestore(
   messageId: string,
   reply: MessageReply
 ): Promise<void> {
+  const cleanedReply = deepCleanDoc(reply);
   try {
     const ref = doc(db, MESSAGES_COLLECTION, messageId);
     const snap = await getDocs(collection(db, MESSAGES_COLLECTION));
@@ -591,14 +726,14 @@ export async function addReplyToGuideMessageInFirestore(
       if (d.id === messageId) {
         found = true;
         const msg = d.data() as GuideMessage;
-        const updatedReplies = [...(msg.replies || []), reply];
-        await updateDoc(ref, { replies: updatedReplies });
+        const updatedReplies = [...(msg.replies || []), cleanedReply];
+        await updateDoc(ref, { replies: deepCleanDoc(updatedReplies) });
         break;
       }
     }
     if (!found) {
       // Create or merge
-      await setDoc(ref, { id: messageId, replies: [reply] }, { merge: true });
+      await setDoc(ref, { id: messageId, replies: [cleanedReply] }, { merge: true });
     }
   } catch (err) {
     console.warn('Failed to add reply to message in Firestore:', err);
@@ -610,7 +745,7 @@ export async function addReplyToGuideMessageInFirestore(
     const existing: GuideMessage[] = cachedStr ? JSON.parse(cachedStr) : [...INITIAL_GUIDE_MESSAGES];
     const target = existing.find(m => m.id === messageId);
     if (target) {
-      target.replies = [...(target.replies || []), reply];
+      target.replies = [...(target.replies || []), cleanedReply];
       localStorage.setItem('dbit_guide_messages', JSON.stringify(existing));
     }
   } catch (e) {}

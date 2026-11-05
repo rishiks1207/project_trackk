@@ -213,7 +213,8 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !abstract.trim()) return;
+    if (!title.trim() || !abstract.trim() || !problemStatement.trim()) return;
+    if (teamMembers.length === 0) return;
 
     const stackList = techStackInput.split(',').map(s => s.trim()).filter(Boolean);
 
@@ -224,7 +225,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
       title,
       domain,
       abstract,
-      problemStatement: problemStatement || 'Undergraduate engineering project problem definition.',
+      problemStatement: problemStatement.trim(),
       techStack: stackList.length > 0 ? stackList : ['TypeScript', 'React'],
       guideName,
       teamMembers,
@@ -496,21 +497,22 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
             {/* Problem Statement & Tech Stack */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div>
-                <label htmlFor={problemStatementId} className="block font-bold text-slate-700 mb-1.5">
-                  Problem Statement
+                <label htmlFor={problemStatementId} className="block font-bold text-slate-900 mb-1.5">
+                  Problem Statement <span className="text-red-500 font-black">*</span>
                 </label>
                 <textarea
                   id={problemStatementId}
+                  required
                   rows={2}
                   value={problemStatement}
                   onChange={e => setProblemStatement(e.target.value)}
                   placeholder="What academic or engineering pain point does this address?"
-                  className="w-full bg-white rounded-2xl p-3 border border-slate-200/80 shadow-xs text-xs font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                  className="w-full bg-white text-slate-900 placeholder:text-slate-400 rounded-2xl p-3 border border-slate-300 shadow-xs text-xs font-semibold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label htmlFor={techStackInputId} className="block font-bold text-slate-700 mb-1.5">
+                <label htmlFor={techStackInputId} className="block font-bold text-slate-900 mb-1.5">
                   Tech Stack (comma separated)
                 </label>
                 <input
@@ -518,11 +520,12 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
                   type="text"
                   value={techStackInput}
                   onChange={e => setTechStackInput(e.target.value)}
-                  className="w-full bg-white rounded-2xl px-3 py-2 border border-slate-200/80 shadow-xs text-xs font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                  placeholder="e.g. React, Python, PostgreSQL"
+                  className="w-full bg-white text-slate-900 placeholder:text-slate-400 rounded-2xl px-3 py-2 border border-slate-300 shadow-xs text-xs font-semibold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                 />
                 
                 <div className="mt-2.5">
-                  <label htmlFor={githubInputId} className="block font-bold text-slate-700 mb-1">
+                  <label htmlFor={githubInputId} className="block font-bold text-slate-900 mb-1">
                     GitHub Repository (Stage 2 Sync)
                   </label>
                   <input
@@ -531,7 +534,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
                     value={githubUrl}
                     onChange={e => setGithubUrl(e.target.value)}
                     placeholder="https://github.com/username/repo"
-                    className="w-full bg-white rounded-2xl px-3 py-2 border border-slate-200/80 shadow-xs text-xs font-mono font-medium focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden"
+                    className="w-full bg-white text-slate-900 placeholder:text-slate-400 rounded-2xl px-3 py-2 border border-slate-300 shadow-xs text-xs font-mono font-semibold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                   />
                 </div>
               </div>
@@ -567,7 +570,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
                   value={pitchDefense}
                   onChange={e => setPitchDefense(e.target.value)}
                   placeholder="Explain the unique architectural nuances, distinct algorithms, datasets, or DBIT department scope that differentiates your proposal..."
-                  className="w-full bg-[#F4F5F8] rounded-2xl p-3 text-xs text-slate-900 border border-slate-200 focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden font-medium"
+                  className="w-full bg-[#F4F5F8] text-slate-900 placeholder:text-slate-400 rounded-2xl p-3 text-xs border border-slate-300 focus:ring-2 focus:ring-[#D4F938] focus:outline-hidden font-medium"
                 />
 
                 <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
@@ -584,15 +587,15 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
             )}
 
             {/* Team Members Selection from Students Database */}
-            <div className="bg-white rounded-3xl p-5 shadow-xs border border-slate-100 space-y-3">
+            <div className="bg-white rounded-3xl p-5 shadow-xs border border-slate-200 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-slate-900" />
-                    <span>Team Members (DBIT Student Database)</span>
+                    <span>Team Members <span className="text-red-500 font-black">*</span> (DBIT Student Database)</span>
                   </span>
                   <span className="text-[11px] text-slate-500 font-medium">
-                    {teamMembers.length} / 4 students selected • Picked from registered accounts
+                    {teamMembers.length} / 4 students selected • Minimum 1 student required
                   </span>
                 </div>
                 
@@ -728,8 +731,8 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!title.trim() || !abstract.trim()}
-            className="inline-flex items-center gap-2 bg-[#D4F938] hover:bg-[#cbf525] disabled:opacity-50 text-slate-950 font-black text-xs px-6 py-3 rounded-full shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
+            disabled={!title.trim() || !abstract.trim() || !problemStatement.trim() || teamMembers.length === 0}
+            className="inline-flex items-center gap-2 bg-[#D4F938] hover:bg-[#cbf525] disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs px-6 py-3 rounded-full shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             <span>

@@ -51,14 +51,23 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
 
   // Student's specific project based on logged-in student account
   const myProposal = currentRole === 'student'
-    ? proposals.find(p => 
-        (currentUser?.groupNo && p.groupNo === currentUser.groupNo && (!currentUser.trackNo || p.trackNo === currentUser.trackNo)) ||
-        (p.teamMembers && p.teamMembers.some(m => 
-          (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase()) ||
-          (currentUser?.name && m.name && m.name.toLowerCase() === currentUser.name.toLowerCase()) ||
-          (currentUser?.rollNo && m.rollNo && m.rollNo === currentUser.rollNo)
-        ))
-      )
+    ? proposals.find(p => {
+        if (!currentUser) return false;
+        const groupMatch = Boolean(
+          currentUser.groupNo !== undefined && currentUser.groupNo !== null &&
+          p.groupNo !== undefined && p.groupNo !== null &&
+          Number(p.groupNo) === Number(currentUser.groupNo) &&
+          (!currentUser.trackNo || !p.trackNo || Number(p.trackNo) === Number(currentUser.trackNo))
+        );
+        const memberMatch = Boolean(
+          p.teamMembers && p.teamMembers.some(m => 
+            (currentUser.email && m.email && m.email.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
+            (currentUser.name && m.name && m.name.toLowerCase().trim() === currentUser.name.toLowerCase().trim()) ||
+            (currentUser.rollNo && m.rollNo && String(m.rollNo).trim() === String(currentUser.rollNo).trim())
+          )
+        );
+        return groupMatch || memberMatch;
+      })
     : undefined;
 
   const myNovelty = myProposal?.similarityData 
@@ -73,7 +82,8 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
 
   // Student's active stage gate
   const currentGate = myProposal?.stageGates?.find(g => g.status === 'in_progress') || 
-                      myProposal?.stageGates?.[2] || 
+                      myProposal?.stageGates?.find(g => g.status === 'pending') || 
+                      myProposal?.stageGates?.[0] || 
                       null;
 
   const verifiedGatesCount = myProposal?.stageGates?.filter(g => g.status === 'approved').length || 0;
@@ -201,7 +211,7 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
                 </div>
                 <div>
                   <h3 className="font-extrabold text-[#18191E] text-sm tracking-tight">Project Status &amp; Mentorship</h3>
-                  <span className="text-[10px] font-mono text-slate-500">{myProposal?.projectId || 'Group 05'}</span>
+                  <span className="text-[10px] font-mono text-slate-500">{myProposal?.projectId || (currentUser?.groupNo ? `Group ${String(currentUser.groupNo).padStart(2, '0')}` : 'Project')}</span>
                 </div>
               </div>
               <button 
@@ -254,11 +264,11 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 font-medium">Track &amp; Group:</span>
-                <span className="font-mono font-bold text-slate-700">Track {myProposal?.trackNo || 7} • Group {myProposal?.groupNo || 5}</span>
+                <span className="font-mono font-bold text-slate-700">Track {myProposal?.trackNo || currentUser?.trackNo || 7} • Group {myProposal?.groupNo || currentUser?.groupNo || 1}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 font-medium">Team Members:</span>
-                <span className="font-bold text-slate-800">{myProposal?.teamMembers?.length || 4} Students</span>
+                <span className="font-bold text-slate-800">{myProposal?.teamMembers?.length || 1} Students</span>
               </div>
             </div>
           </div>
@@ -385,44 +395,56 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
                   <span className="text-[10px] text-slate-400 font-mono">Stage 2 Audit Trail</span>
                 </div>
               </div>
-              <span className="w-2.5 h-2.5 rounded-full bg-[#D4F938] border border-black/20" title="Connected" />
+              <span 
+                className={`w-2.5 h-2.5 rounded-full ${myProposal?.githubData ? 'bg-[#D4F938]' : 'bg-slate-300'} border border-black/20`} 
+                title={myProposal?.githubData ? 'Connected' : 'Not Connected'} 
+              />
             </div>
 
-            {/* Repo Info Card */}
-            <div className="p-3.5 bg-[#F4F5F8] rounded-2xl border border-slate-200/60 my-2 space-y-1.5">
-              <div className="text-[11px] font-bold text-black truncate flex items-center justify-between">
-                <span>{myProposal?.githubData?.owner || 'rishiks1207'}/{myProposal?.githubData?.repo || 'dbit-project-track'}</span>
-                <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded-full border border-slate-200">
-                  {myProposal?.githubData?.defaultBranch || 'main'}
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500">
-                Language: <strong className="text-black">{myProposal?.githubData?.primaryLanguage || 'TypeScript'}</strong>
-              </p>
-            </div>
-
-            {/* Recent Verified Commits */}
-            <div className="space-y-2 mt-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                Latest Milestone Commits
-              </span>
-              <div className="space-y-1.5 text-xs">
-                {(myProposal?.githubData?.latestCommits || [
-                  { sha: 'e736a46', message: 'feat: add similarity comparison engine', author: 'Rishik', date: '2026-02-14' },
-                  { sha: '98d021c', message: 'docs: finalize UML sequence diagrams', author: 'Apoorvadeep', date: '2026-02-12' }
-                ]).slice(0, 2).map((c, i) => (
-                  <div key={i} className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
-                    <div className="truncate pr-1">
-                      <p className="font-bold text-[#18191E] truncate text-[11px]">{c.message}</p>
-                      <span className="text-[10px] text-slate-400 font-mono">{c.sha} • {c.author}</span>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C6B5FD] text-black shrink-0">
-                      Linked
+            {myProposal?.githubData ? (
+              <>
+                {/* Repo Info Card */}
+                <div className="p-3.5 bg-[#F4F5F8] rounded-2xl border border-slate-200/60 my-2 space-y-1.5">
+                  <div className="text-[11px] font-bold text-black truncate flex items-center justify-between">
+                    <span>{myProposal.githubData.owner}/{myProposal.githubData.repo}</span>
+                    <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                      {myProposal.githubData.defaultBranch || 'main'}
                     </span>
                   </div>
-                ))}
+                  <p className="text-[10px] text-slate-500">
+                    Language: <strong className="text-black">{myProposal.githubData.primaryLanguage || 'TypeScript'}</strong>
+                  </p>
+                </div>
+
+                {/* Recent Verified Commits */}
+                <div className="space-y-2 mt-3">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Latest Milestone Commits
+                  </span>
+                  <div className="space-y-1.5 text-xs">
+                    {(myProposal.githubData.latestCommits || []).slice(0, 2).map((c, i) => (
+                      <div key={i} className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
+                        <div className="truncate pr-1">
+                          <p className="font-bold text-[#18191E] truncate text-[11px]">{c.message}</p>
+                          <span className="text-[10px] text-slate-400 font-mono">{c.sha} • {c.author}</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C6B5FD] text-black shrink-0">
+                          Linked
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="p-4 bg-[#F4F5F8] rounded-2xl border border-slate-200/60 my-3 text-center space-y-2">
+                <GitBranch className="w-6 h-6 text-slate-400 mx-auto" />
+                <p className="text-xs font-bold text-slate-700">No Repository Linked</p>
+                <p className="text-[11px] text-slate-500">
+                  Connect your team's GitHub repository during Stage 2 to verify code deliverables and automated commits.
+                </p>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs mt-3">
@@ -431,7 +453,7 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
               onClick={() => onNavigateToTab('stages')}
               className="font-bold text-black hover:underline inline-flex items-center gap-1 text-xs cursor-pointer"
             >
-              <span>Sync Repo</span>
+              <span>{myProposal?.githubData ? 'Sync Repo' : 'Connect Repo'}</span>
               <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
@@ -451,14 +473,16 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
                   Academic Review Milestones &amp; 14-Week Gate Progression
                 </h3>
                 <p className="text-xs text-white/60">
-                  Track 7 Group 05 progress mapped against Mumbai University SE Mini Project-I syllabus
+                  {myProposal
+                    ? `Track ${myProposal.trackNo || currentUser?.trackNo || 7} Group ${String(myProposal.groupNo || currentUser?.groupNo || 1).padStart(2, '0')} progress mapped against Mumbai University SE Mini Project-I syllabus`
+                    : `${currentUser?.cohort || 'SE Mini Project-I'} syllabus progression`}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-white/80 font-mono font-bold bg-white/10 px-3.5 py-1.5 rounded-full border border-white/10">
-                Term 2026 • SE COMPS
+                {currentUser?.cohort || 'Term 2026 • SE COMPS'}
               </span>
             </div>
           </div>
@@ -469,7 +493,9 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
               <span className="w-1.5 h-8 rounded-full bg-[#D4F938]" />
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tabular-nums">Exp 3</span>
+                  <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tabular-nums">
+                    {currentGate?.title ? currentGate.title.split(':')[0].trim() : (myProposal ? 'Exp 1' : 'Gate 0')}
+                  </span>
                 </div>
                 <span className="text-[11px] text-white/60 uppercase tracking-wider font-semibold">
                   Current Sprint
@@ -481,7 +507,9 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
               <span className="w-1.5 h-8 rounded-full bg-[#C6B5FD]" />
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tabular-nums">4 / 7</span>
+                  <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tabular-nums">
+                    {verifiedGatesCount} / {totalGatesCount}
+                  </span>
                 </div>
                 <span className="text-[11px] text-white/60 uppercase tracking-wider font-semibold">
                   Signed Deliverables
@@ -493,7 +521,9 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
               <span className="w-1.5 h-8 rounded-full bg-white/30" />
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tabular-nums">Week 6</span>
+                  <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tabular-nums">
+                    {currentGate?.weekRange || currentGate?.dueDate || 'Week 2'}
+                  </span>
                 </div>
                 <span className="text-[11px] text-white/60 uppercase tracking-wider font-semibold">
                   Next Sign-Off
@@ -502,59 +532,70 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
             </div>
           </div>
 
-          {/* Milestone Review Columns with Highlighted Active Phase */}
+          {/* Milestone Review Columns with Dynamic Active Phase */}
           <div className="relative z-10 pt-4 border-t border-white/10 space-y-3">
             {/* Bars container */}
             <div className="grid grid-cols-7 gap-2 sm:gap-4 items-end h-36">
-              {[
-                { height: 'h-20', isHighlight: false },
-                { height: 'h-24', isHighlight: false },
-                { height: 'h-36', isHighlight: true },
-                { height: 'h-24', isHighlight: false },
-                { height: 'h-20', isHighlight: false },
-                { height: 'h-28', isHighlight: false },
-                { height: 'h-32', isHighlight: false }
-              ].map((col, idx) => (
-                <div key={idx} className="flex flex-col items-center justify-end h-full group/bar cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
-                  {col.isHighlight ? (
-                    <div className="flex items-end gap-1 w-full justify-center h-full">
-                      <div className="w-4 sm:w-6 h-36 rounded-full bg-[#D4F938] shadow-lg shadow-[#D4F938]/30 transition-all duration-300 group-hover/bar:scale-105" />
-                      <div className="w-4 sm:w-6 h-28 rounded-full bg-[#C6B5FD] shadow-lg shadow-[#C6B5FD]/20 transition-all duration-300 group-hover/bar:scale-105" />
-                    </div>
-                  ) : (
-                    <div className="w-6 sm:w-10 flex flex-col items-center justify-end h-full">
-                      <div 
-                        className={`w-full ${col.height} rounded-xl bg-white/10 border border-white/10 relative overflow-hidden transition-all duration-300 group-hover/bar:bg-white/20`}
-                        style={{
-                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.06) 5px, rgba(255,255,255,0.06) 10px)'
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
+              {(myProposal?.stageGates || [
+                { id: '1', title: 'Exp 1: Synopsis', weekRange: 'W1–2', status: 'in_progress' },
+                { id: '2', title: 'Exp 2: Lit Review', weekRange: 'W3–4', status: 'pending' },
+                { id: '3', title: 'Exp 3: UML Arch', weekRange: 'W5–6', status: 'pending' },
+                { id: '4', title: 'Exp 4: Modules', weekRange: 'W7–8', status: 'pending' },
+                { id: '5', title: 'Exp 5: Similarity', weekRange: 'W9–10', status: 'pending' },
+                { id: '6', title: 'Exp 6: Testing', weekRange: 'W11–12', status: 'pending' },
+                { id: '7', title: 'Exp 7: Defense', weekRange: 'W13–14', status: 'pending' }
+              ]).map((gate, idx) => {
+                const isApproved = gate.status === 'approved';
+                const isInProgress = gate.status === 'in_progress';
+                return (
+                  <div key={idx} className="flex flex-col items-center justify-end h-full group/bar cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
+                    {isInProgress ? (
+                      <div className="flex items-end gap-1 w-full justify-center h-full">
+                        <div className="w-4 sm:w-6 h-36 rounded-full bg-[#D4F938] shadow-lg shadow-[#D4F938]/30 transition-all duration-300 group-hover/bar:scale-105" />
+                        <div className="w-4 sm:w-6 h-28 rounded-full bg-[#C6B5FD] shadow-lg shadow-[#C6B5FD]/20 transition-all duration-300 group-hover/bar:scale-105" />
+                      </div>
+                    ) : isApproved ? (
+                      <div className="w-6 sm:w-10 flex flex-col items-center justify-end h-full">
+                        <div className="w-full h-32 rounded-xl bg-[#D4F938]/80 border border-[#D4F938] transition-all duration-300 group-hover/bar:bg-[#D4F938]" />
+                      </div>
+                    ) : (
+                      <div className="w-6 sm:w-10 flex flex-col items-center justify-end h-full">
+                        <div 
+                          className="w-full h-20 rounded-xl bg-white/10 border border-white/10 relative overflow-hidden transition-all duration-300 group-hover/bar:bg-white/20"
+                          style={{
+                            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.06) 5px, rgba(255,255,255,0.06) 10px)'
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Clean Labels row below bars */}
             <div className="grid grid-cols-7 gap-2 sm:gap-4 text-center pt-2 border-t border-white/10">
-              {[
-                { phase: 'Exp 1: Synopsis', week: 'W1–2', isHighlight: false },
-                { phase: 'Exp 2: Lit Review', week: 'W3–4', isHighlight: false },
-                { phase: 'Exp 3: UML Arch', week: 'W5–6', isHighlight: true },
-                { phase: 'Exp 4: Modules', week: 'W7–8', isHighlight: false },
-                { phase: 'Exp 5: Similarity', week: 'W9–10', isHighlight: false },
-                { phase: 'Exp 6: Testing', week: 'W11–12', isHighlight: false },
-                { phase: 'Exp 7: Defense', week: 'W13–14', isHighlight: false }
-              ].map((col, idx) => (
-                <div key={idx} className="flex flex-col items-center justify-center min-w-0 px-0.5 cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
-                  <span className={`text-[10px] sm:text-[11px] font-bold tracking-tight text-center truncate w-full block ${
-                    col.isHighlight ? 'text-[#D4F938]' : 'text-slate-300'
-                  }`}>
-                    {col.phase}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400 mt-0.5 block">{col.week}</span>
-                </div>
-              ))}
+              {(myProposal?.stageGates || [
+                { id: '1', title: 'Exp 1: Synopsis', weekRange: 'W1–2', status: 'in_progress' },
+                { id: '2', title: 'Exp 2: Lit Review', weekRange: 'W3–4', status: 'pending' },
+                { id: '3', title: 'Exp 3: UML Arch', weekRange: 'W5–6', status: 'pending' },
+                { id: '4', title: 'Exp 4: Modules', weekRange: 'W7–8', status: 'pending' },
+                { id: '5', title: 'Exp 5: Similarity', weekRange: 'W9–10', status: 'pending' },
+                { id: '6', title: 'Exp 6: Testing', weekRange: 'W11–12', status: 'pending' },
+                { id: '7', title: 'Exp 7: Defense', weekRange: 'W13–14', status: 'pending' }
+              ]).map((gate, idx) => {
+                const isInProgress = gate.status === 'in_progress';
+                return (
+                  <div key={idx} className="flex flex-col items-center justify-center min-w-0 px-0.5 cursor-pointer" onClick={() => onNavigateToTab('gantt')}>
+                    <span className={`text-[10px] sm:text-[11px] font-bold tracking-tight text-center truncate w-full block ${
+                      isInProgress ? 'text-[#D4F938]' : 'text-slate-300'
+                    }`}>
+                      {gate.title.split(':')[0]}
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400 mt-0.5 block">{gate.weekRange || `W${idx*2 + 1}–${idx*2 + 2}`}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
