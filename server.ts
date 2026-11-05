@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -23,7 +24,14 @@ import {
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+
+const portArgIndex = process.argv.indexOf('--port');
+const cliPort = portArgIndex !== -1 ? parseInt(process.argv[portArgIndex + 1], 10) : NaN;
+const PORT = !isNaN(cliPort) ? cliPort : (parseInt(process.env.PORT || '', 10) || 3000);
+
+const hostArgIndex = process.argv.indexOf('--host');
+const cliHost = hostArgIndex !== -1 ? process.argv[hostArgIndex + 1] : undefined;
+const HOST = cliHost || process.env.HOST || '0.0.0.0';
 
 app.use(express.json());
 
@@ -262,6 +270,8 @@ app.get('/api/health', (_req, res) => {
 });
 
 async function startServer() {
+  const httpServer = http.createServer(app);
+
   // Seed PostgreSQL tables if first boot
   try {
     await seedInitialDataIfNeeded();
@@ -269,17 +279,40 @@ async function startServer() {
     console.warn('Initial seed deferred:', e);
   }
 
-  // Mount Vite middlewares in dev mode
+  // Mount Vite middlewares in dev mode with unified HMR on httpServer
   const vite = await createViteServer({
-    server: { middlewareMode: true },
+    server: { 
+      middlewareMode: true,
+      hmr: process.env.DISABLE_HMR === 'true' ? false : { server: httpServer }
+    },
     appType: 'spa',
   });
 
   app.use(vite.middlewares);
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`DBIT ProjectTrack full-stack server running on http://0.0.0.0:${PORT} with Cloud SQL PostgreSQL`);
+  httpServer.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Please terminate existing processes or retry.`);
+    } else {
+      console.error('Server error:', err);
+    }
   });
+
+  httpServer.listen(PORT, HOST, () => {
+    console.log(`\n  Vite + Express server ready in dev mode:`);
+    console.log(`  ➜  Local:   http://localhost:${PORT}/`);
+    console.log(`  ➜  Network: http://${HOST}:${PORT}/`);
+    console.log(`  ➜  Health:  http://localhost:${PORT}/api/health\n`);
+  });
+
+  const shutdown = () => {
+    httpServer.close(() => {
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 startServer();
