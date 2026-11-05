@@ -49,24 +49,21 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
     p => p.status === 'flagged_conflict' || p.status === 'coordinator_arbitration'
   ).length;
 
-  // Student's specific project based on logged-in student account
+  // Student's specific project based on logged-in student account (strict team membership)
   const myProposal = currentRole === 'student'
     ? proposals.find(p => {
         if (!currentUser) return false;
-        const groupMatch = Boolean(
-          currentUser.groupNo !== undefined && currentUser.groupNo !== null &&
-          p.groupNo !== undefined && p.groupNo !== null &&
-          Number(p.groupNo) === Number(currentUser.groupNo) &&
-          (!currentUser.trackNo || !p.trackNo || Number(p.trackNo) === Number(currentUser.trackNo))
-        );
-        const memberMatch = Boolean(
+        const cleanEmail = (currentUser.email || '').toLowerCase().trim();
+        const cleanName = (currentUser.name || '').toLowerCase().trim();
+        const cleanRoll = currentUser.rollNo ? String(currentUser.rollNo).trim() : '';
+
+        return Boolean(
           p.teamMembers && p.teamMembers.some(m => 
-            (currentUser.email && m.email && m.email.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
-            (currentUser.name && m.name && m.name.toLowerCase().trim() === currentUser.name.toLowerCase().trim()) ||
-            (currentUser.rollNo && m.rollNo && String(m.rollNo).trim() === String(currentUser.rollNo).trim())
+            (cleanEmail && m.email && m.email.toLowerCase().trim() === cleanEmail) ||
+            (cleanName && m.name && m.name.toLowerCase().trim() === cleanName) ||
+            (cleanRoll && m.rollNo && String(m.rollNo).trim() === cleanRoll)
           )
         );
-        return groupMatch || memberMatch;
       })
     : undefined;
 

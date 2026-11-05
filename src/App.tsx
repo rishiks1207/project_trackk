@@ -300,30 +300,27 @@ export default function App() {
     showToast(`Switched active view to ${newRole.toUpperCase()} controller.`);
   };
 
-  // Student's scoped proposal based on logged-in student account
+  // Student's scoped proposal based strictly on team membership
   const studentProposal = proposals.find(p => {
-    if (!currentUser) return false;
-    const groupMatch = Boolean(
-      currentUser.groupNo !== undefined && currentUser.groupNo !== null &&
-      p.groupNo !== undefined && p.groupNo !== null &&
-      Number(p.groupNo) === Number(currentUser.groupNo) &&
-      (!currentUser.trackNo || !p.trackNo || Number(p.trackNo) === Number(currentUser.trackNo))
-    );
-    const memberMatch = Boolean(
+    if (!currentUser || currentUser.role !== 'student') return false;
+    const cleanEmail = (currentUser.email || '').toLowerCase().trim();
+    const cleanName = (currentUser.name || '').toLowerCase().trim();
+    const cleanRoll = currentUser.rollNo ? String(currentUser.rollNo).trim() : '';
+
+    return Boolean(
       p.teamMembers && p.teamMembers.some(m => 
-        (currentUser.email && m.email && m.email.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
-        (currentUser.name && m.name && m.name.toLowerCase().trim() === currentUser.name.toLowerCase().trim()) ||
-        (currentUser.rollNo && m.rollNo && String(m.rollNo).trim() === String(currentUser.rollNo).trim())
+        (cleanEmail && m.email && m.email.toLowerCase().trim() === cleanEmail) ||
+        (cleanName && m.name && m.name.toLowerCase().trim() === cleanName) ||
+        (cleanRoll && m.rollNo && String(m.rollNo).trim() === cleanRoll)
       )
     );
-    return groupMatch || memberMatch;
   });
 
   const hasSubmittedProposal = currentRole === 'student' && Boolean(studentProposal);
 
   const handleOpenSubmitModal = () => {
     if (hasSubmittedProposal) {
-      showToast(`Proposal already submitted for Group ${currentUser?.groupNo || studentProposal?.groupNo || 5}. Each student group can only submit 1 proposal.`);
+      showToast(`Proposal already registered for your student account (1/1 limit reached).`);
       return;
     }
     setIsSubmitModalOpen(true);
@@ -354,6 +351,10 @@ export default function App() {
 
   // Handlers
   const handleCreateProposal = (newProp: Partial<ProjectProposal>) => {
+    if (hasSubmittedProposal) {
+      showToast('Each student profile can only submit 1 project proposal. You have already registered your proposal.');
+      return;
+    }
     const id = `prop-${Date.now()}`;
     const targetTrack = newProp.trackNo || currentUser?.trackNo || 7;
     const targetGroup = newProp.groupNo || currentUser?.groupNo || 1;
@@ -734,18 +735,8 @@ export default function App() {
   const filteredProposals = proposals.filter(p => {
     // 0. Student Visibility Constraint: Students can ONLY see their own proposal if it exists!
     if (currentRole === 'student') {
-      const isMine = Boolean(
-        (currentUser?.groupNo !== undefined && currentUser?.groupNo !== null &&
-          p.groupNo !== undefined && p.groupNo !== null &&
-          Number(p.groupNo) === Number(currentUser.groupNo) &&
-          (!currentUser.trackNo || !p.trackNo || Number(p.trackNo) === Number(currentUser.trackNo))) ||
-        (p.teamMembers && p.teamMembers.some(m => 
-          (currentUser?.email && m.email && m.email.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
-          (currentUser?.name && m.name && m.name.toLowerCase().trim() === currentUser.name.toLowerCase().trim()) ||
-          (currentUser?.rollNo && m.rollNo && String(m.rollNo).trim() === String(currentUser.rollNo).trim())
-        ))
-      );
-      if (!isMine) return false;
+      if (!studentProposal) return false;
+      return p.id === studentProposal.id;
     }
 
     // 1. Guide Visibility Constraint: Projects assigned to coordinator do NOT reach guide until approved
@@ -1563,9 +1554,14 @@ export default function App() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
                     {[
-                      { id: 'all', label: `All (${proposals.length})` },
-                      { id: 'approved', label: `Approved (${proposals.filter(p => p.status === 'approved').length})` },
-                      { id: 'conflicts', label: `Conflicts (${conflictCount})` },
+                      { 
+                        id: 'all', 
+                        label: currentRole === 'student' 
+                          ? `My Proposal (${studentProposal ? 1 : 0})` 
+                          : `All (${proposals.length})` 
+                      },
+                      { id: 'approved', label: `Approved (${currentRole === 'student' ? (studentProposal?.status === 'approved' ? 1 : 0) : proposals.filter(p => p.status === 'approved').length})` },
+                      { id: 'conflicts', label: `Conflicts (${currentRole === 'student' ? (studentProposal?.similarityData?.isConflict ? 1 : 0) : conflictCount})` },
                       { id: 'under_review', label: 'Under Review' }
                     ].map(tab => (
                       <button
@@ -1602,13 +1598,20 @@ export default function App() {
                 </div>
 
                 {currentRole === 'student' && (
-                  <button
-                    onClick={() => setIsSubmitModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-black text-xs font-black shadow-xs cursor-pointer"
-                  >
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Submit Proposal</span>
-                  </button>
+                  hasSubmittedProposal ? (
+                    <div className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Proposal Registered (1/1)</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleOpenSubmitModal}
+                      className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-black text-xs font-black shadow-xs cursor-pointer"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Submit Proposal</span>
+                    </button>
+                  )
                 )}
               </div>
 
@@ -1622,9 +1625,9 @@ export default function App() {
                     <p className="text-xs text-slate-500 max-w-md mx-auto">
                       {currentRole === 'student' ? 'Click below to register your team, project title, and faculty guide to initiate topic similarity analysis and milestone tracking.' : 'Try resetting the status filter or search query.'}
                     </p>
-                    {currentRole === 'student' && (
+                    {currentRole === 'student' && !hasSubmittedProposal && (
                       <button
-                        onClick={() => setIsSubmitModalOpen(true)}
+                        onClick={handleOpenSubmitModal}
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-black text-xs font-black shadow-xs cursor-pointer transition-all"
                       >
                         <PlusCircle className="w-4 h-4" />

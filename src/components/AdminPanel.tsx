@@ -142,7 +142,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [createYear, setCreateYear] = useState('SE');
   const [createClass, setCreateClass] = useState('COMPS C');
   const [createBatch, setCreateBatch] = useState('Batch A');
-  const [groupNo, setGroupNo] = useState<number>(5);
+  const [groupNo, setGroupNo] = useState<number | ''>('');
   const [department, setDepartment] = useState('Computer Engineering');
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -262,8 +262,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       role,
       rollNo: role === 'student' ? rollNo.trim() : null,
       cohort: calculatedCohort,
-      groupNo: role === 'student' ? Number(groupNo) : null,
-      trackNo: null, // Track number removed per specification: will be assigned when a leader adds students to a project
+      groupNo: role === 'student' && groupNo !== '' ? Number(groupNo) : null,
+      trackNo: null, // Track number assigned when leader submits project
       department
     };
 
@@ -323,6 +323,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setEmail('');
       setPassword('dbit2026');
       setRollNo('');
+      setGroupNo('');
     } catch (err: any) {
       setErrorMsg(err.message || 'Error creating user in database.');
     } finally {
@@ -780,15 +781,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredUsers.length > 0 ? (
-                    filteredUsers.map(user => {
+                    filteredUsers.map((user, idx) => {
+                      const cleanEmail = (user.email || '').toLowerCase().trim();
+                      const cleanName = (user.name || '').toLowerCase().trim();
+                      const cleanRoll = user.rollNo ? String(user.rollNo).trim() : '';
                       const matchingProposal = proposals.find(p => 
-                        p.teamMembers.some(m => m.email.toLowerCase() === user.email.toLowerCase()) ||
-                        p.guideName.toLowerCase().includes(user.name.toLowerCase()) ||
-                        (user.groupNo && p.groupNo === user.groupNo)
+                        (p.teamMembers && p.teamMembers.some(m => 
+                          (cleanEmail && m.email && m.email.toLowerCase().trim() === cleanEmail) ||
+                          (cleanName && m.name && m.name.toLowerCase().trim() === cleanName) ||
+                          (cleanRoll && m.rollNo && String(m.rollNo).trim() === cleanRoll)
+                        )) ||
+                        (user.role === 'guide' && p.guideName && p.guideName.toLowerCase().includes(cleanName))
                       );
 
                       return (
-                        <tr key={user.id} className="hover:bg-slate-50/70 transition-colors">
+                        <tr key={user.uid || user.email || `${user.id}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
                           {/* Name & Email */}
                           <td className="p-4 pl-6">
                             <div className="font-extrabold text-slate-900">{user.name}</div>
@@ -1477,8 +1484,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">Group No.</label>
                       <input
                         type="number"
+                        placeholder="e.g. 5"
                         value={groupNo}
-                        onChange={e => setGroupNo(parseInt(e.target.value) || 1)}
+                        onChange={e => setGroupNo(e.target.value === '' ? '' : parseInt(e.target.value) || 1)}
                         className="w-full bg-white text-slate-900 placeholder:text-slate-400 rounded-xl px-3 py-2 border border-slate-300 font-mono text-xs font-bold focus:ring-2 focus:ring-[#D4F938] focus:border-slate-900 focus:outline-hidden"
                       />
                     </div>

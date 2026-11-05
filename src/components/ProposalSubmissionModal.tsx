@@ -66,12 +66,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
         isLeader: true
       }];
     }
-    return [
-      { name: 'Rishik Ezhuthachan', rollNo: '15', email: 'student@dbit.in', isLeader: true },
-      { name: 'Apoorvadeep Sinha', rollNo: '16', email: 'apoorvadeep.sinha@dbit.in' },
-      { name: 'Ron Barretto', rollNo: '17', email: 'ron.barretto@dbit.in' },
-      { name: 'Aryan Gaikwad', rollNo: '18', email: 'aryan.gaikwad@dbit.in' }
-    ];
+    return [];
   });
 
   // Re-sync with currentUser when modal opens
@@ -83,16 +78,12 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
       if (currentUser.role === 'guide') setGuideName(currentUser.name);
 
       if (currentUser.role === 'student' && currentUser.name) {
-        // If not Rishik or group 5, start with user's own profile as team leader
-        const isDefaultRishik = currentUser.email === 'student@dbit.in' || currentUser.name.toLowerCase().includes('rishik');
-        if (!isDefaultRishik) {
-          setTeamMembers([{
-            name: currentUser.name,
-            rollNo: currentUser.rollNo || '1',
-            email: currentUser.email || 'student@dbit.in',
-            isLeader: true
-          }]);
-        }
+        setTeamMembers([{
+          name: currentUser.name,
+          rollNo: currentUser.rollNo || '1',
+          email: currentUser.email || 'student@dbit.in',
+          isLeader: true
+        }]);
       }
     }
   }, [isOpen, currentUser]);
@@ -255,11 +246,11 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
             <Logo size="sm" showText={false} />
             <div>
               <div className="flex items-center gap-2">
-                <span className="bg-[#D4F938] text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Similarity Check Active
+                <span className="bg-[#D4F938] text-slate-950 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  SBERT + TF-IDF Active
                 </span>
                 <span className="text-slate-400 text-[11px] font-mono">
-                  Cutoff: 75%
+                  Conflict Threshold: 75%
                 </span>
               </div>
               <h2 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
@@ -345,15 +336,15 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
                 </div>
               </div>
 
-              {/* Sub-scores: Topic Similarity vs Text Match */}
+              {/* Sub-scores: SBERT Semantic vs TF-IDF Lexical */}
               <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-200/60 text-xs font-mono">
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Topic Similarity</span>
+                  <span className="text-[10px] text-indigo-600 font-bold block uppercase tracking-wider">SBERT Semantic</span>
                   <span className="font-black text-slate-900">{(similarityReport.sbertScore * 100).toFixed(1)}%</span>
                 </div>
                 <div className="h-6 w-px bg-slate-200" />
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Text Match</span>
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">TF-IDF Lexical</span>
                   <span className="font-black text-slate-900">{(similarityReport.tfidfScore * 100).toFixed(1)}%</span>
                 </div>
               </div>

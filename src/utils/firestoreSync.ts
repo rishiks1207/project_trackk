@@ -277,36 +277,7 @@ export async function authenticateUserWithFirestore(
 }
 
 function sanitizeProposal(p: ProjectProposal): ProjectProposal {
-  const cleanStr = (s?: string) => {
-    if (!s) return s;
-    return s
-      .replace(/Sentence-BERT/gi, 'Similarity Model')
-      .replace(/SBERT\s*&\s*Cosine/gi, 'Similarity Engine')
-      .replace(/SBERT\s*\+\s*TF-IDF/gi, 'Similarity Check')
-      .replace(/SBERT/gi, 'Similarity')
-      .replace(/TF-IDF/gi, 'Text Match')
-      .replace(/Lexical/gi, 'Text Match');
-  };
-
-  return {
-    ...p,
-    title: cleanStr(p.title) || p.title,
-    abstract: cleanStr(p.abstract) || p.abstract,
-    problemStatement: cleanStr(p.problemStatement) || p.problemStatement,
-    stageGates: p.stageGates?.map(g => ({
-      ...g,
-      title: cleanStr(g.title) || g.title,
-      submissionNotes: cleanStr(g.submissionNotes) || g.submissionNotes,
-      deliverable: cleanStr(g.deliverable) || g.deliverable
-    })),
-    githubData: p.githubData ? {
-      ...p.githubData,
-      latestCommits: p.githubData.latestCommits?.map(c => ({
-        ...c,
-        message: cleanStr(c.message) || c.message
-      }))
-    } : undefined
-  };
+  return p;
 }
 
 /**
@@ -356,7 +327,28 @@ export function getLocalCachedProposals(): ProjectProposal[] {
     const raw = localStorage.getItem(PROPOSALS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        // Enforce strictly one canonical proposal for Rishik Ezhuthachan (Group 05)
+        // Filter out any duplicate/extraneous test proposals submitted under Rishik
+        const deduplicated: ProjectProposal[] = [];
+        const seenGroups = new Set<string>();
+
+        for (const p of parsed) {
+          const isRishikExtra = p.id !== 'prop-group-05' && (
+            (p.groupNo === 5 && String(p.cohort || '').includes('SE COMPS C')) ||
+            (p.teamMembers && p.teamMembers.some((m: any) => m.email?.toLowerCase() === 'rishiks1207@gmail.com'))
+          );
+          if (isRishikExtra) continue;
+
+          const groupKey = `${p.groupNo || 0}_${p.cohort || ''}`;
+          if (groupKey !== '0_' && seenGroups.has(groupKey)) {
+            continue;
+          }
+          if (groupKey !== '0_') seenGroups.add(groupKey);
+          deduplicated.push(p);
+        }
+        return deduplicated;
+      }
     }
   } catch (e) {
     // ignore
@@ -367,7 +359,21 @@ export function getLocalCachedProposals(): ProjectProposal[] {
 export function cacheProposalLocally(proposal: ProjectProposal): void {
   try {
     const existing = getLocalCachedProposals();
-    const idx = existing.findIndex(p => p.id === proposal.id || (p.groupNo === proposal.groupNo && p.cohort === proposal.cohort));
+    // One proposal per group/author: update existing if present, otherwise add
+    const isRishik = proposal.teamMembers?.some(m => m.email?.toLowerCase() === 'rishiks1207@gmail.com') ||
+      (proposal.groupNo === 5 && String(proposal.cohort || '').includes('SE COMPS C'));
+    
+    if (isRishik && proposal.id !== 'prop-group-05') {
+      // Keep canonical prop-group-05
+      return;
+    }
+
+    const idx = existing.findIndex(p => 
+      p.id === proposal.id || 
+      (p.groupNo === proposal.groupNo && p.cohort === proposal.cohort) ||
+      (proposal.teamMembers?.[0]?.email && p.teamMembers?.[0]?.email && p.teamMembers[0].email.toLowerCase() === proposal.teamMembers[0].email.toLowerCase())
+    );
+
     if (idx !== -1) {
       existing[idx] = { ...existing[idx], ...proposal };
     } else {
@@ -407,18 +413,40 @@ export function subscribeToProposals(
         INITIAL_PROPOSALS.forEach(p => mergedMap.set(p.id, p));
 
         // 2. Authoritative Firestore documents
-        firestoreList.forEach(p => mergedMap.set(p.id, p));
+        firestoreList.forEach(p => {
+          // Guarantee Rishik has strictly one proposal: prop-group-05
+          const isRishikExtra = p.id !== 'prop-group-05' && (
+            (p.groupNo === 5 && String(p.cohort || '').includes('SE COMPS C')) ||
+            (p.teamMembers && p.teamMembers.some((m: any) => m.email?.toLowerCase() === 'rishiks1207@gmail.com'))
+          );
+          if (!isRishikExtra) {
+            mergedMap.set(p.id, p);
+          }
+        });
 
         // 3. Local cached proposals
         localCached.forEach(p => {
-          if (!mergedMap.has(p.id)) {
+          const isRishikExtra = p.id !== 'prop-group-05' && (
+            (p.groupNo === 5 && String(p.cohort || '').includes('SE COMPS C')) ||
+            (p.teamMembers && p.teamMembers.some((m: any) => m.email?.toLowerCase() === 'rishiks1207@gmail.com'))
+          );
+          if (!isRishikExtra && !mergedMap.has(p.id)) {
             mergedMap.set(p.id, p);
             // Self-heal: sync missing proposal to Firestore in background
             saveProposalToFirestore(p);
           }
         });
 
-        const mergedList = Array.from(mergedMap.values());
+        // Deduplicate so each group has strictly 1 proposal
+        const groupDedupMap = new Map<string, ProjectProposal>();
+        for (const p of mergedMap.values()) {
+          const groupKey = `${p.groupNo || p.id}_${p.cohort || ''}`;
+          if (!groupDedupMap.has(groupKey) || p.id === 'prop-group-05') {
+            groupDedupMap.set(groupKey, p);
+          }
+        }
+
+        const mergedList = Array.from(groupDedupMap.values());
         // Sort newest first
         mergedList.sort((a, b) => {
           const tA = new Date(a.updatedAt || a.createdAt || 0).getTime();

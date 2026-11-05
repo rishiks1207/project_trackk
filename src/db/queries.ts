@@ -167,13 +167,16 @@ function loadPersistedUsers(): any[] {
   } catch (err) {
     console.warn('Could not read persisted users file:', err);
   }
-  return SEED_USERS.map((u, idx) => ({
-    id: idx + 1,
-    ...u,
-    assignedProjectCount: u.role === 'student' && (u as any).groupNo === 5 ? 1 : 0,
-    relatedProposalTitle: u.role === 'student' && (u as any).groupNo === 5 ? INITIAL_PROPOSALS[0]?.title : undefined,
-    createdAt: new Date().toISOString()
-  }));
+  return SEED_USERS.map((u, idx) => {
+    const isGroup5SeedMember = ['rishiks1207@gmail.com', 'apoorvadeep.sinha@dbit.in', 'ron.barretto@dbit.in', 'aryan.gaikwad@dbit.in'].includes(u.email.toLowerCase());
+    return {
+      id: idx + 1,
+      ...u,
+      assignedProjectCount: isGroup5SeedMember ? 1 : 0,
+      relatedProposalTitle: isGroup5SeedMember ? INITIAL_PROPOSALS[0]?.title : undefined,
+      createdAt: new Date().toISOString()
+    };
+  });
 }
 
 function savePersistedUsers(usersToSave: any[]) {
@@ -370,49 +373,71 @@ export async function authenticateUser(email: string, passwordAttempt: string) {
 }
 
 export async function getAllUsers() {
+  let userList: any[] = [];
+  let allProps: any[] = [];
+
   if (isCloudSqlAvailable()) {
     try {
-      const userList = await db.select().from(users).orderBy(desc(users.createdAt));
-      const allProps = await db.select().from(proposals);
-
-      return userList.map(u => {
-        let assignedCount = 0;
-        let relatedProposalTitle: string | undefined;
-
-        if (u.role === 'guide') {
-          assignedCount = allProps.filter(p => p.guideName?.toLowerCase().includes(u.name.toLowerCase().split(' ')[1] || u.name.toLowerCase())).length;
-        } else if (u.role === 'student' && u.groupNo) {
-          const matchingProp = allProps.find(p => p.groupNo === u.groupNo);
-          if (matchingProp) {
-            relatedProposalTitle = matchingProp.title;
-            assignedCount = 1;
-          }
-        } else if (u.role === 'coordinator') {
-          assignedCount = allProps.length;
-        }
-
-        return {
-          id: u.id,
-          uid: u.uid,
-          email: u.email,
-          name: u.name,
-          role: u.role,
-          rollNo: u.rollNo,
-          department: u.department,
-          cohort: u.cohort,
-          groupNo: u.groupNo,
-          trackNo: u.trackNo,
-          assignedProjectCount: assignedCount,
-          relatedProposalTitle,
-          createdAt: u.createdAt ? u.createdAt.toISOString() : undefined
-        };
-      });
+      userList = await db.select().from(users).orderBy(desc(users.createdAt));
+      allProps = await db.select().from(proposals);
     } catch {
-      // Fall through to memory
+      userList = memoryUsers;
+      allProps = memoryProposals;
     }
+  } else {
+    userList = memoryUsers;
+    allProps = memoryProposals;
   }
 
-  return memoryUsers;
+  return userList.map(u => {
+    let assignedCount = 0;
+    let relatedProposalTitle: string | undefined;
+
+    if (u.role === 'guide') {
+      assignedCount = allProps.filter(p => 
+        p.guideName && u.name && (
+          p.guideName.toLowerCase().includes(u.name.toLowerCase().split(' ')[1] || u.name.toLowerCase()) ||
+          u.name.toLowerCase().includes(p.guideName.toLowerCase())
+        )
+      ).length;
+    } else if (u.role === 'student') {
+      const cleanEmail = (u.email || '').toLowerCase().trim();
+      const cleanName = (u.name || '').toLowerCase().trim();
+      const cleanRoll = u.rollNo ? String(u.rollNo).trim() : '';
+
+      const matchingProp = allProps.find(p => {
+        if (!p.teamMembers || !Array.isArray(p.teamMembers)) return false;
+        return p.teamMembers.some((m: any) => 
+          (cleanEmail && m.email && m.email.toLowerCase().trim() === cleanEmail) ||
+          (cleanName && m.name && m.name.toLowerCase().trim() === cleanName) ||
+          (cleanRoll && m.rollNo && String(m.rollNo).trim() === cleanRoll)
+        );
+      });
+
+      if (matchingProp) {
+        relatedProposalTitle = matchingProp.title;
+        assignedCount = 1;
+      }
+    } else if (u.role === 'coordinator') {
+      assignedCount = allProps.length;
+    }
+
+    return {
+      id: u.id,
+      uid: u.uid,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      rollNo: u.rollNo,
+      department: u.department,
+      cohort: u.cohort,
+      groupNo: u.groupNo,
+      trackNo: u.trackNo,
+      assignedProjectCount: assignedCount,
+      relatedProposalTitle,
+      createdAt: u.createdAt ? (typeof u.createdAt === 'string' ? u.createdAt : u.createdAt.toISOString()) : undefined
+    };
+  });
 }
 
 export async function createUserAccount(accountData: any) {
