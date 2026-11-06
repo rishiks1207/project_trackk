@@ -6,7 +6,7 @@
  * Conflict Threshold >= 0.75 flags a topic clash for Coordinator Arbitration.
  */
 
-import { SimilarityResult, HistoricalProject } from '../types';
+import { SimilarityResult, HistoricalProject, ProjectProposal } from '../types';
 
 // Academic and common stopwords to filter out
 const STOPWORDS = new Set([
@@ -281,8 +281,10 @@ export function calculateHybridSimilarity(
   // Blended TF-IDF score with subword support
   const enhancedTfidf = 0.80 * tfidfSim + 0.20 * shingleSim;
 
-  // Calibrated Hybrid Formula: 65% SBERT Semantic + 35% TF-IDF
-  const hybridScore = (0.65 * sbertSim) + (0.35 * enhancedTfidf);
+  // Calibrated Hybrid Formula: 60% SBERT Semantic + 40% TF-IDF with peak signal sensitivity
+  const rawOverall = (0.60 * sbertSim) + (0.40 * enhancedTfidf);
+  const maxSignal = Math.max(sbertSim, enhancedTfidf);
+  const hybridScore = maxSignal >= 0.70 ? Math.max(rawOverall, maxSignal * 0.85 + rawOverall * 0.15) : rawOverall;
 
   const normalizedOverall = Math.min(1.0, Math.max(0.0, Math.round(hybridScore * 1000) / 1000));
   const normalizedSbert = Math.min(1.0, Math.max(0.0, Math.round(sbertSim * 1000) / 1000));
@@ -296,14 +298,16 @@ export function calculateHybridSimilarity(
 }
 
 /**
- * Scans a proposal against past projects and peer proposals using SBERT & TF-IDF
+ * Scans a proposal against past projects and peer active proposals using SBERT & TF-IDF
  */
 export function scanProposalSimilarity(
   title: string,
   abstract: string,
   historicalProjects: HistoricalProject[],
-  problemStatement?: string
-): SimilarityResult {
+  problemStatement?: string,
+  activeProposals?: ProjectProposal[],
+  currentProposalId?: string
+): SimilarityResult & { matchedActiveProposal?: ProjectProposal } {
   const parts = [title, problemStatement, abstract].filter(p => p && p.trim().length > 0);
   const fullText = parts.join('. ');
 
@@ -318,9 +322,11 @@ export function scanProposalSimilarity(
   }
 
   let highestScore = 0;
-  let bestMatch: HistoricalProject | null = null;
+  let bestMatch: HistoricalProject | ProjectProposal | null = null;
+  let bestMatchedActiveProp: ProjectProposal | undefined = undefined;
   let bestScores = { sbert: 0, tfidf: 0 };
 
+  // 1. Scan historical archive projects
   for (const project of historicalProjects) {
     const targetText = [
       project.title,
@@ -333,7 +339,30 @@ export function scanProposalSimilarity(
     if (sim.overallScore > highestScore) {
       highestScore = sim.overallScore;
       bestMatch = project;
+      bestMatchedActiveProp = undefined;
       bestScores = { sbert: sim.sbertScore, tfidf: sim.tfidfScore };
+    }
+  }
+
+  // 2. Scan active proposals (especially approved or submitted proposals from current cohort)
+  if (activeProposals && activeProposals.length > 0) {
+    for (const prop of activeProposals) {
+      if (currentProposalId && prop.id === currentProposalId) continue;
+
+      const targetText = [
+        prop.title,
+        prop.problemStatement,
+        prop.abstract
+      ].filter(p => p && p.trim().length > 0).join('. ');
+
+      const sim = calculateHybridSimilarity(fullText, targetText);
+
+      if (sim.overallScore > highestScore) {
+        highestScore = sim.overallScore;
+        bestMatch = prop;
+        bestMatchedActiveProp = prop;
+        bestScores = { sbert: sim.sbertScore, tfidf: sim.tfidfScore };
+      }
     }
   }
 
@@ -352,8 +381,12 @@ export function scanProposalSimilarity(
       matchedSnippets.push(`SBERT Overlapping Terms: ${overlapTokens.slice(0, 7).join(', ')}`);
     }
 
+    const yearLabel = (bestMatch as HistoricalProject).academicYear || (bestMatch as ProjectProposal).academicYear || 'Current Batch';
+    const guideLabel = (bestMatch as HistoricalProject).guideName || (bestMatch as ProjectProposal).guideName || 'Faculty Guide';
+    const statusNote = (bestMatch as ProjectProposal).status ? ` [Status: ${(bestMatch as ProjectProposal).status}]` : '';
+
     if (isConflict) {
-      explanation = `CRITICAL TOPIC CLASH (SBERT: ${(bestScores.sbert * 100).toFixed(0)}%, TF-IDF: ${(bestScores.tfidf * 100).toFixed(0)}%, Overall: ${(highestScore * 100).toFixed(0)}%): Heavy semantic overlap with "${bestMatch.title}" (${bestMatch.academicYear}, Guide: ${bestMatch.guideName}). Pitch Defense required for Coordinator Arbitration.`;
+      explanation = `CRITICAL TOPIC CLASH (SBERT: ${(bestScores.sbert * 100).toFixed(0)}%, TF-IDF: ${(bestScores.tfidf * 100).toFixed(0)}%, Overall: ${(highestScore * 100).toFixed(0)}%): Heavy semantic overlap in problem statement/abstract with "${bestMatch.title}" (${yearLabel}, Guide: ${guideLabel})${statusNote}. Both proposals sent to Pitch Defense.`;
     } else if (highestScore >= 0.50) {
       explanation = `MODERATE TOPIC OVERLAP (${(highestScore * 100).toFixed(0)}%): SBERT semantic correlation with "${bestMatch.title}". Review architectural scope to ensure novelty.`;
     } else {
@@ -376,10 +409,11 @@ export function scanProposalSimilarity(
     tfidfScore: bestScores.tfidf,
     matchedProjectId: bestMatch?.id || '',
     matchedProjectTitle: bestMatch?.title || '',
-    matchedProjectYear: bestMatch?.academicYear || '',
+    matchedProjectYear: (bestMatch as HistoricalProject)?.academicYear || (bestMatch as ProjectProposal)?.academicYear || '2026',
     matchedSnippets,
     isConflict,
     explanation,
-    aiNoveltySuggestions: aiNoveltySuggestions.length > 0 ? aiNoveltySuggestions : []
+    aiNoveltySuggestions: aiNoveltySuggestions.length > 0 ? aiNoveltySuggestions : [],
+    matchedActiveProposal: bestMatchedActiveProp
   };
 }

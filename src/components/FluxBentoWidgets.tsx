@@ -86,6 +86,10 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
   const verifiedGatesCount = myProposal?.stageGates?.filter(g => g.status === 'approved').length || 0;
   const totalGatesCount = myProposal?.stageGates?.length || 7;
 
+  const averageGateVelocity = proposals.length > 0
+    ? (proposals.reduce((sum, p) => sum + (p.stageGates?.filter(g => g.status === 'approved').length || 0), 0) / proposals.length).toFixed(1)
+    : '0.0';
+
   // If role is Student and no proposal is submitted yet, show dedicated unsubmitted state
   if (currentRole === 'student' && !myProposal) {
     return (
@@ -772,7 +776,7 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
           <div className="my-4 flex items-baseline justify-between">
             <div className="flex items-baseline gap-1.5">
               <span className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight font-mono tabular-nums">
-                5,8
+                {averageGateVelocity}
               </span>
               <span className="text-xs font-semibold text-slate-400">
                 / 7 milestones
@@ -785,7 +789,7 @@ export const FluxBentoWidgets: React.FC<FluxBentoWidgetsProps> = ({
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Next: Review 2 Prototype Demo</span>
+            <span>Next: {currentGate ? currentGate.title : 'Review 2 Prototype Demo'}</span>
             <button 
               onClick={() => onNavigateToTab('gantt')}
               className="font-bold text-slate-900 hover:underline inline-flex items-center gap-0.5 cursor-pointer"

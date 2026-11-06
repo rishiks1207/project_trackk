@@ -30,6 +30,7 @@ interface ProposalSubmissionModalProps {
   onClose: () => void;
   onSubmit: (proposal: Partial<ProjectProposal>) => void;
   historicalProjects: HistoricalProject[];
+  activeProposals?: ProjectProposal[];
   currentUser?: UserAccount | null;
 }
 
@@ -38,6 +39,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
   onClose,
   onSubmit,
   historicalProjects,
+  activeProposals,
   currentUser
 }) => {
   const [title, setTitle] = useState('');
@@ -162,7 +164,7 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
   if (!isOpen) return null;
 
   // Real-time similarity scan across title, abstract, and problem statement
-  const similarityReport = scanProposalSimilarity(title, abstract, historicalProjects, problemStatement);
+  const similarityReport = scanProposalSimilarity(title, abstract, historicalProjects, problemStatement, activeProposals);
   const originalityPercent = Math.max(0, Math.min(100, Math.round((1 - similarityReport.overallScore) * 100)));
   const simPercent = Math.round(similarityReport.overallScore * 100);
 

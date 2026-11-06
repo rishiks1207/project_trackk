@@ -94,3 +94,45 @@ test('scanProposalSimilarity flags conflict when similarity >= 0.75 threshold', 
   assert.equal(novelReport.isConflict, false, 'Novel topic should not conflict');
   assert.ok(novelReport.overallScore < 0.75, `Score should be below 0.75, got ${novelReport.overallScore}`);
 });
+
+test('scanProposalSimilarity flags conflict against active approved proposals and problem statement', () => {
+  const activeProposals = [
+    {
+      id: 'prop-approved-1',
+      projectId: 'DBIT-SE-2026-T7-G05',
+      trackNo: 7,
+      groupNo: 5,
+      academicYear: '2026-27',
+      cohort: 'SE COMPS C (Batch A)',
+      title: 'Centralized Project Proposal & Progress Tracking Portal (DBIT ProjectTrack)',
+      domain: 'AI/ML' as const,
+      abstract: 'DBIT ProjectTrack automates topic screening, faculty review, and milestone tracking. Featuring automated real-time duplicate screening with similarity checking, it flags duplicate ideas. An expert conflict queue provides side-by-side pitch defense evaluation.',
+      problemStatement: 'Manual Google Sheets and WhatsApp submissions cause topic overlap and stage gate confusion across SE/TE cohorts.',
+      objectives: ['Automated duplicate detection'],
+      scope: { inScope: ['Proposal submission'], outOfScope: [] },
+      techStack: ['React', 'TypeScript'],
+      teamMembers: [{ name: 'Student 1', rollNo: '1', email: 's1@dbit.in', isLeader: true }],
+      guideName: 'Mr. Nazareth Remedios',
+      coordinatorName: 'Prof. Meenal Kulkarni',
+      status: 'approved' as const,
+      lockedTopic: true,
+      stageGates: [],
+      feedbackHistory: [],
+      createdAt: '2026-07-01T00:00:00Z',
+      updatedAt: '2026-07-01T00:00:00Z'
+    }
+  ];
+
+  const duplicateCandidate = scanProposalSimilarity(
+    'Centralized College Project Title & Abstract Submission Web App',
+    'An automated web platform for college student project title and abstract submission that scans for duplicate project titles using sentence embeddings and cosine similarity, notifying project coordinators to avoid duplicate projects.',
+    [],
+    'Manual Google Sheets cause topic overlap and stage gate confusion.',
+    activeProposals
+  );
+
+  assert.equal(duplicateCandidate.isConflict, true, 'Should trigger conflict against active approved proposal');
+  assert.ok(duplicateCandidate.matchedActiveProposal !== undefined, 'Should return matchedActiveProposal reference');
+  assert.equal(duplicateCandidate.matchedActiveProposal?.id, 'prop-approved-1');
+});
+

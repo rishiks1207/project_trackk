@@ -51,6 +51,8 @@ import { GuideMessageModal } from './components/GuideMessageModal';
 import { FeedbackLogModal } from './components/FeedbackLogModal';
 import { PresentationViewerModal } from './components/PresentationViewerModal';
 import { SettingsPanel } from './components/SettingsPanel';
+import { ProposalRejectionModal } from './components/ProposalRejectionModal';
+import { ProposalDeleteModal } from './components/ProposalDeleteModal';
 
 import { 
   ProjectProposal, 
@@ -68,6 +70,7 @@ import {
   INITIAL_HISTORICAL_PROJECTS 
 } from './data/mockData';
 import { getStatusBadgeDetails } from './utils/stateMachine';
+import { scanProposalSimilarity } from './utils/nlpSimilarity';
 import { 
   seedFirestoreIfEmpty, 
   subscribeToProposals, 
@@ -77,7 +80,9 @@ import {
   saveProposalToFirestore, 
   saveArchiveProjectToFirestore,
   updateMilestoneInFirestore,
-  saveUserToFirestore
+  saveUserToFirestore,
+  deleteProposalFromFirestore,
+  saveGuideMessageToFirestore
 } from './utils/firestoreSync';
 
 export default function App() {
@@ -153,6 +158,10 @@ export default function App() {
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isPresentationModalOpen, setIsPresentationModalOpen] = useState(false);
   const [isGuideMessageModalOpen, setIsGuideMessageModalOpen] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectingProposal, setRejectingProposal] = useState<ProjectProposal | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingProposal, setDeletingProposal] = useState<ProjectProposal | null>(null);
 
   // Status, Domain & Sorting Filters for Proposals list
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -367,6 +376,25 @@ export default function App() {
           { name: currentUser?.name || 'Student', rollNo: currentUser?.rollNo || '1', email: currentUser?.email || 'student@dbit.in', isLeader: true }
         ];
 
+    // Run real SBERT NLP similarity verification across title, problem statement, and abstract against all approved/existing proposals & archive
+    const calculatedSim = scanProposalSimilarity(
+      newProp.title || '',
+      newProp.abstract || '',
+      historicalProjects,
+      newProp.problemStatement,
+      proposals,
+      id
+    );
+
+    const activeSimData = newProp.similarityData && newProp.similarityData.overallScore > 0
+      ? (newProp.similarityData.overallScore >= calculatedSim.overallScore ? newProp.similarityData : calculatedSim)
+      : calculatedSim;
+
+    const isClash = activeSimData.isConflict;
+    const initialStatus = isClash
+      ? (newProp.pitchDefense ? 'coordinator_arbitration' : 'flagged_conflict')
+      : (newProp.status || 'under_guide_review');
+
     const fullProposal: ProjectProposal = {
       id,
       projectId: generatedProjectId,
@@ -390,16 +418,10 @@ export default function App() {
       teamMembers: defaultTeam,
       guideName: newProp.guideName || 'Mr. Nazareth Remedios',
       coordinatorName: newProp.coordinatorName || 'Prof. Meenal Kulkarni',
-      status: newProp.status || ((newProp.similarityData?.isConflict) ? 'flagged_conflict' : 'submitted'),
+      status: initialStatus,
       lockedTopic: false,
       pitchDefense: newProp.pitchDefense || undefined,
-      similarityData: newProp.similarityData || {
-        overallScore: 0.18,
-        sbertScore: 0.20,
-        tfidfScore: 0.15,
-        isConflict: false,
-        explanation: 'Novel scope within DBIT Computer Engineering archives.'
-      },
+      similarityData: activeSimData,
       stageGates: [
         {
           id: 'gate-0',
@@ -487,6 +509,28 @@ export default function App() {
 
     // 1. Save to Cloud Firestore database & Local mirror
     saveProposalToFirestore(fullProposal);
+
+    // If conflict detected with an active peer/approved proposal, send BOTH to Pitch Defense
+    if (isClash && calculatedSim.matchedActiveProposal) {
+      const targetMatch = calculatedSim.matchedActiveProposal;
+      const updatedMatch: ProjectProposal = {
+        ...targetMatch,
+        status: targetMatch.pitchDefense ? 'coordinator_arbitration' : 'flagged_conflict',
+        similarityData: {
+          ...(targetMatch.similarityData || { overallScore: 0, sbertScore: 0, tfidfScore: 0, isConflict: true, explanation: '' }),
+          isConflict: true,
+          overallScore: Math.max(targetMatch.similarityData?.overallScore || 0, calculatedSim.overallScore),
+          sbertScore: Math.max(targetMatch.similarityData?.sbertScore || 0, calculatedSim.sbertScore),
+          tfidfScore: Math.max(targetMatch.similarityData?.tfidfScore || 0, calculatedSim.tfidfScore),
+          matchedProjectId: id,
+          matchedProjectTitle: fullProposal.title,
+          explanation: `CRITICAL TOPIC CLASH (${Math.round(calculatedSim.overallScore * 100)}% SBERT/TF-IDF similarity): High semantic overlap in problem statement/abstract with newly submitted proposal "${fullProposal.title}". Both proposals sent to Pitch Defense.`
+        }
+      };
+
+      saveProposalToFirestore(updatedMatch);
+      setProposals(prev => prev.map(p => p.id === updatedMatch.id ? updatedMatch : p));
+    }
 
     // 2. Update user profile project count in Firestore and local state
     if (currentUser) {
@@ -729,6 +773,84 @@ export default function App() {
     }
 
     showToast('Topic approved by Coordinator! Allocated to Faculty Guide for Stage 1 mentoring.');
+  };
+
+  const handleConfirmRejectProposal = (
+    proposalId: string, 
+    reason: string, 
+    sendNotice: boolean, 
+    noticeMessage: string
+  ) => {
+    let targetProp: ProjectProposal | null = null;
+
+    setProposals(prev => prev.map(p => {
+      if (p.id !== proposalId) return p;
+      const updated: ProjectProposal = {
+        ...p,
+        status: 'rejected',
+        lockedTopic: false,
+        feedbackHistory: [
+          {
+            id: `fb-rej-${Date.now()}`,
+            authorName: currentUser?.name || 'Prof. Meenal Kulkarni',
+            authorRole: 'coordinator',
+            timestamp: new Date().toISOString(),
+            stage: 'Topic Evaluation',
+            status: 'rejected',
+            remarks: `Topic Proposal Rejected: ${reason}`
+          },
+          ...p.feedbackHistory
+        ]
+      };
+      targetProp = updated;
+      saveProposalToFirestore(updated);
+      return updated;
+    }));
+
+    if (sendNotice && targetProp) {
+      const p = targetProp as ProjectProposal;
+      const newMsg: GuideMessage = {
+        id: `msg-rej-${Date.now()}`,
+        senderName: currentUser?.name || 'Prof. Meenal Kulkarni',
+        senderRole: 'coordinator',
+        targetGroupNo: p.groupNo,
+        subject: `Topic Rejection & Improvement Guidance for Group ${p.groupNo}`,
+        message: `Coordinator Evaluation Remarks:\n${reason}\n\nActionable Improvement Directions:\n${noticeMessage}`,
+        urgency: 'high',
+        timestamp: new Date().toISOString(),
+        replies: []
+      };
+      saveGuideMessageToFirestore(newMsg);
+      setGuideMessages(prev => [newMsg, ...prev]);
+    }
+
+    showToast('Topic proposal rejected and revision guidance dispatched to student group.');
+  };
+
+  const handleConfirmDeleteProposal = async (proposalId: string) => {
+    const propToDelete = proposals.find(p => p.id === proposalId);
+    if (propToDelete && propToDelete.status === 'approved') {
+      showToast('Approved proposals cannot be withdrawn or deleted.');
+      return;
+    }
+
+    await deleteProposalFromFirestore(proposalId);
+    setProposals(prev => prev.filter(p => p.id !== proposalId));
+    if (selectedProposalId === proposalId) {
+      setSelectedProposalId('');
+    }
+
+    if (currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        assignedProjectCount: Math.max(0, (currentUser.assignedProjectCount || 1) - 1),
+        relatedProposalTitle: undefined
+      };
+      saveUserToFirestore(updatedUser);
+      setCurrentUser(updatedUser);
+    }
+
+    showToast('Project proposal withdrawn and removed from database.');
   };
 
   // Filtered proposals list with multi-facet filters
@@ -1168,15 +1290,37 @@ export default function App() {
                               >
                                 Stage Gates &amp; Upload
                               </button>
-                              <button
-                                onClick={() => {
-                                  setSelectedProposalId(myProp.id);
-                                  setActiveTab('conflicts');
-                                }}
-                                className="px-4 py-2 rounded-full bg-[#C6B5FD] hover:bg-[#b5a2fc] text-xs font-black text-black transition-colors cursor-pointer"
-                              >
-                                200-Word Pitch
-                              </button>
+
+                              {/* Pitch button ONLY if topic overlap/conflict exists or pitch was submitted */}
+                              {(myProp.similarityData?.isConflict || myProp.status === 'flagged_conflict' || myProp.status === 'coordinator_arbitration' || myProp.pitchDefense) && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedProposalId(myProp.id);
+                                    setActiveTab('conflicts');
+                                  }}
+                                  className="px-4 py-2 rounded-full bg-[#C6B5FD] hover:bg-[#b5a2fc] text-xs font-black text-black transition-colors cursor-pointer"
+                                >
+                                  200-Word Pitch
+                                </button>
+                              )}
+
+                              {/* Withdraw / Remove proposal button for student before approval */}
+                              {myProp.status !== 'approved' ? (
+                                <button
+                                  onClick={() => {
+                                    setDeletingProposal(myProp);
+                                    setIsDeleteModalOpen(true);
+                                  }}
+                                  className="px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-900 border border-red-200 text-xs font-bold transition-colors cursor-pointer"
+                                  title="Withdraw and remove this proposal"
+                                >
+                                  Withdraw Proposal
+                                </button>
+                              ) : (
+                                <span className="px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
+                                  ✓ Topic Approved (Locked)
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1710,14 +1854,46 @@ export default function App() {
                               </div>
                             </div>
 
-                          <div className="flex items-center gap-2">
-                            {(currentRole === 'guide' || currentRole === 'coordinator') && prop.status !== 'approved' && (
-                              <button
-                                onClick={() => handleQuickApprove(prop.id)}
-                                className="px-4 py-2 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-xs font-black text-black transition-colors shadow-xs cursor-pointer"
-                              >
-                                Approve Topic
-                              </button>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {(currentRole === 'guide' || currentRole === 'coordinator' || currentRole === 'admin') && prop.status !== 'approved' && (
+                              <>
+                                <button
+                                  onClick={() => handleQuickApprove(prop.id)}
+                                  className="px-4 py-2 rounded-full bg-[#D4F938] hover:bg-[#c2e72f] text-xs font-black text-black transition-colors shadow-xs cursor-pointer"
+                                >
+                                  Approve Topic
+                                </button>
+
+                                {(currentRole === 'coordinator' || currentRole === 'admin') && (
+                                  <button
+                                    onClick={() => {
+                                      setRejectingProposal(prop);
+                                      setIsRejectModalOpen(true);
+                                    }}
+                                    className="px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-900 border border-red-200 text-xs font-bold transition-colors cursor-pointer"
+                                  >
+                                    Reject Topic
+                                  </button>
+                                )}
+                              </>
+                            )}
+
+                            {currentRole === 'student' && (
+                              prop.status !== 'approved' ? (
+                                <button
+                                  onClick={() => {
+                                    setDeletingProposal(prop);
+                                    setIsDeleteModalOpen(true);
+                                  }}
+                                  className="px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-900 border border-red-200 text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  Withdraw Proposal
+                                </button>
+                              ) : (
+                                <span className="px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
+                                  ✓ Topic Approved (Locked)
+                                </span>
+                              )
                             )}
                             <button
                               onClick={() => {
@@ -1843,6 +2019,13 @@ export default function App() {
                   currentRole={currentRole}
                   onArbitrateConflict={handleArbitrateConflict}
                   onSubmitPitchDefense={handleSavePitchDefense}
+                  onRejectProposal={(propId) => {
+                    const target = proposals.find(p => p.id === propId);
+                    if (target) {
+                      setRejectingProposal(target);
+                      setIsRejectModalOpen(true);
+                    }
+                  }}
                 />
               )}
             </div>
@@ -1915,6 +2098,7 @@ export default function App() {
         onClose={() => setIsSubmitModalOpen(false)}
         onSubmit={handleCreateProposal}
         historicalProjects={historicalProjects}
+        activeProposals={proposals}
         currentUser={currentUser}
       />
 
@@ -1944,6 +2128,26 @@ export default function App() {
           onMessageSent={(msg) => showToast(`Faculty guide notice broadcasted: "${msg.subject}"`)}
         />
       )}
+
+      <ProposalRejectionModal
+        isOpen={isRejectModalOpen}
+        onClose={() => {
+          setIsRejectModalOpen(false);
+          setRejectingProposal(null);
+        }}
+        proposal={rejectingProposal}
+        onConfirmReject={handleConfirmRejectProposal}
+      />
+
+      <ProposalDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeletingProposal(null);
+        }}
+        proposal={deletingProposal}
+        onConfirmDelete={handleConfirmDeleteProposal}
+      />
     </div>
   );
 }

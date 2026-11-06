@@ -176,9 +176,9 @@ export function getStatusBadgeDetails(status: ProposalStatus): {
       };
     case 'rejected':
       return {
-        label: 'Duplicate Upheld (Rejected)',
-        badgeClass: 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300',
-        description: 'Topic clash upheld. Submit alternative proposal.'
+        label: 'Topic Rejected',
+        badgeClass: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950/60 dark:text-red-300',
+        description: 'Topic rejected by Project Coordinator. See notices for improvement guidance; withdraw or revise.'
       };
     case 'completed':
       return {

@@ -321,9 +321,47 @@ export function deepCleanDoc<T>(data: T): T {
 }
 
 const PROPOSALS_STORAGE_KEY = 'dbit_custom_proposals';
+export const DELETED_PROPOSALS_KEY = 'dbit_deleted_proposal_ids';
+
+export function getDeletedProposalIds(): string[] {
+  try {
+    const raw = localStorage.getItem(DELETED_PROPOSALS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function markProposalDeleted(proposalId: string): void {
+  try {
+    const deleted = getDeletedProposalIds();
+    if (!deleted.includes(proposalId)) {
+      deleted.push(proposalId);
+      localStorage.setItem(DELETED_PROPOSALS_KEY, JSON.stringify(deleted));
+    }
+    const cached = getLocalCachedProposals();
+    const updated = cached.filter(p => p.id !== proposalId);
+    localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    // ignore
+  }
+}
+
+export async function deleteProposalFromFirestore(proposalId: string): Promise<boolean> {
+  markProposalDeleted(proposalId);
+  try {
+    const ref = doc(db, PROPOSALS_COLLECTION, proposalId);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    console.warn('Could not delete proposal from Firestore:', err);
+    return false;
+  }
+}
 
 export function getLocalCachedProposals(): ProjectProposal[] {
   try {
+    const deletedIds = new Set(getDeletedProposalIds());
     const raw = localStorage.getItem(PROPOSALS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -334,6 +372,7 @@ export function getLocalCachedProposals(): ProjectProposal[] {
         const seenGroups = new Set<string>();
 
         for (const p of parsed) {
+          if (deletedIds.has(p.id)) continue;
           const isRishikExtra = p.id !== 'prop-group-05' && (
             (p.groupNo === 5 && String(p.cohort || '').includes('SE COMPS C')) ||
             (p.teamMembers && p.teamMembers.some((m: any) => m.email?.toLowerCase() === 'rishiks1207@gmail.com'))
@@ -358,6 +397,13 @@ export function getLocalCachedProposals(): ProjectProposal[] {
 
 export function cacheProposalLocally(proposal: ProjectProposal): void {
   try {
+    // If this proposal was previously marked deleted, unmark it because a new submission occurred
+    const deleted = getDeletedProposalIds();
+    if (deleted.includes(proposal.id)) {
+      const filtered = deleted.filter(id => id !== proposal.id);
+      localStorage.setItem(DELETED_PROPOSALS_KEY, JSON.stringify(filtered));
+    }
+
     const existing = getLocalCachedProposals();
     // One proposal per group/author: update existing if present, otherwise add
     const isRishik = proposal.teamMembers?.some(m => m.email?.toLowerCase() === 'rishiks1207@gmail.com') ||
@@ -406,14 +452,18 @@ export function subscribeToProposals(
         }
 
         // Merge with any locally stored custom proposals so newly created proposals never disappear
+        const deletedIds = new Set(getDeletedProposalIds());
         const localCached = getLocalCachedProposals();
         const mergedMap = new Map<string, ProjectProposal>();
 
         // 1. Initial/seed proposals as base
-        INITIAL_PROPOSALS.forEach(p => mergedMap.set(p.id, p));
+        INITIAL_PROPOSALS.forEach(p => {
+          if (!deletedIds.has(p.id)) mergedMap.set(p.id, p);
+        });
 
         // 2. Authoritative Firestore documents
         firestoreList.forEach(p => {
+          if (deletedIds.has(p.id)) return;
           // Guarantee Rishik has strictly one proposal: prop-group-05
           const isRishikExtra = p.id !== 'prop-group-05' && (
             (p.groupNo === 5 && String(p.cohort || '').includes('SE COMPS C')) ||
@@ -426,6 +476,7 @@ export function subscribeToProposals(
 
         // 3. Local cached proposals
         localCached.forEach(p => {
+          if (deletedIds.has(p.id)) return;
           const isRishikExtra = p.id !== 'prop-group-05' && (
             (p.groupNo === 5 && String(p.cohort || '').includes('SE COMPS C')) ||
             (p.teamMembers && p.teamMembers.some((m: any) => m.email?.toLowerCase() === 'rishiks1207@gmail.com'))
