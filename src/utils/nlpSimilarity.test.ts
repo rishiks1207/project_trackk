@@ -136,3 +136,46 @@ test('scanProposalSimilarity flags conflict against active approved proposals an
   assert.equal(duplicateCandidate.matchedActiveProposal?.id, 'prop-approved-1');
 });
 
+test('LabLink proposal (laboratory hardware equipment management) achieves high originality and no conflict against ProjectTrack/College OS', () => {
+  const activeProposals = [
+    {
+      id: 'prop-approved-1',
+      projectId: 'DBIT-SE-2026-T7-G05',
+      trackNo: 7,
+      groupNo: 5,
+      academicYear: '2026-27',
+      cohort: 'SE COMPS C (Batch A)',
+      title: 'Centralized Project Proposal & Progress Tracking Portal (DBIT ProjectTrack)',
+      domain: 'AI/ML' as const,
+      abstract: 'DBIT ProjectTrack automates topic screening, faculty review, and milestone tracking. Featuring automated real-time duplicate screening with similarity checking, it flags duplicate ideas. An expert conflict queue provides side-by-side pitch defense evaluation.',
+      problemStatement: 'Manual Google Sheets and WhatsApp submissions cause topic overlap and stage gate confusion across SE/TE cohorts.',
+      objectives: ['Automated duplicate detection'],
+      scope: { inScope: ['Proposal submission'], outOfScope: [] },
+      techStack: ['React', 'TypeScript'],
+      teamMembers: [{ name: 'Student 1', rollNo: '1', email: 's1@dbit.in', isLeader: true }],
+      guideName: 'Mr. Nazareth Remedios',
+      coordinatorName: 'Prof. Meenal Kulkarni',
+      status: 'approved' as const,
+      lockedTopic: true,
+      stageGates: [],
+      feedbackHistory: [],
+      createdAt: '2026-07-01T00:00:00Z',
+      updatedAt: '2026-07-01T00:00:00Z'
+    }
+  ];
+
+  const labLinkProposal = scanProposalSimilarity(
+    'LabLink: Centralized Laboratory Management Platform',
+    'We propose developing LabLink, a centralized laboratory management platform designed to improve the utilization, accessibility, and maintenance of college laboratory resources. The platform will allow students and faculty to check equipment availability, reserve instruments for practical sessions, and maintain records of borrowed and returned equipment. Each laboratory instrument will have a unique identification code or QR code, enabling users to scan and access its usage history, availability, and condition.',
+    [],
+    'Laboratory administrators will be able to maintain digital inventory records, monitor equipment usage, identify frequently damaged instruments, and schedule preventive maintenance.',
+    activeProposals
+  );
+
+  assert.equal(labLinkProposal.isConflict, false, 'LabLink should NOT conflict with ProjectTrack or College OS');
+  assert.ok(labLinkProposal.overallScore < 0.35, `Expected low overall score < 0.35, got ${labLinkProposal.overallScore}`);
+  const originality = Math.round((1 - labLinkProposal.overallScore) * 100);
+  assert.ok(originality > 70, `Expected High Originality > 70%, got ${originality}%`);
+});
+
+

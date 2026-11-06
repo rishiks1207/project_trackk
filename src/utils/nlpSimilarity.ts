@@ -20,29 +20,36 @@ const STOPWORDS = new Set([
   'theirs', 'them', 'themselves', 'then', 'there', 'these', 'they', 'this', 'those', 'through', 'to',
   'too', 'under', 'until', 'up', 'very', 'was', 'we', 'were', 'what', 'when', 'where', 'which', 'while',
   'who', 'whom', 'why', 'with', 'would', 'you', 'your', 'yours', 'yourself', 'yourselves',
-  // Domain fillers
+  // Domain fillers & generic academic boilerplate
   'using', 'system', 'based', 'project', 'application', 'model', 'approach', 'study',
-  'proposed', 'implementation', 'paper', 'solution', 'framework'
+  'proposed', 'implementation', 'paper', 'solution', 'framework', 'college', 'university',
+  'campus', 'management', 'platform', 'portal', 'designed', 'improve', 'allow', 'allows',
+  'faculty', 'students', 'student', 'user', 'users', 'resource', 'resources', 'environment',
+  'create', 'better', 'make', 'help', 'helps', 'helping', 'reduce', 'aims', 'aim', 'enable',
+  'enables', 'enabling', 'able', 'include', 'includes', 'including', 'department',
+  'institutional', 'operations', 'digital', 'digitizing', 'automated', 'automation', 'process',
+  'processing', 'develop', 'developing', 'development', 'provide', 'provides', 'providing'
 ]);
 
 /**
- * 28 Dense SBERT Domain Semantic Clusters for engineering capstones and mini-projects.
+ * 29 Dense SBERT Domain Semantic Clusters for engineering capstones and mini-projects.
  * Each cluster encapsulates core semantic synonyms and topical embeddings.
  */
 export const SBERT_DOMAIN_CLUSTERS: Record<string, { weight: number; keywords: string[] }> = {
   // Topic 1: Project Allocation, Proposal Screening & Duplicate Detection (ProjectTrack core)
   project_screening: {
-    weight: 2.4,
+    weight: 2.8,
     keywords: [
       'duplicate', 'similarity', 'screening', 'overlap', 'plagiarism', 'proposals', 'proposal',
       'allocation', 'allocating', 'track', 'tracking', 'milestone', 'stagegate', 'stage-gate',
       'pitch', 'defense', 'arbitration', 'coordinator', 'rubric', 'sbert', 'sentence-bert',
-      'review', 'centralized', 'progress', 'portal', 'clash', 'novelty'
+      'review', 'centralized', 'progress', 'clash', 'novelty', 'submission',
+      'submitting', 'scans', 'embeddings', 'sentence'
     ]
   },
   // Topic 2: Computer Vision, Surveillance & Detection
   computer_vision: {
-    weight: 1.8,
+    weight: 2.0,
     keywords: [
       'yolo', 'yolov8', 'opencv', 'detection', 'segmentation', 'bounding', 'cameras', 'surveillance',
       'optical', 'visual', 'vision', 'image', 'video', 'frame', 'cnn', 'resnet', 'efficientnet',
@@ -126,26 +133,51 @@ export const SBERT_DOMAIN_CLUSTERS: Record<string, { weight: number; keywords: s
       'api', 'fastapi', 'rest', 'graphql', 'postgres', 'postgresql', 'database', 'pipeline'
     ]
   },
-  // Topic 12: FinTech, E-Commerce & Fraud Detection
-  fintech_commerce: {
-    weight: 1.8,
+  // Topic 13: Laboratory Equipment, Inventory & Maintenance
+  lab_inventory: {
+    weight: 2.8,
     keywords: [
-      'fintech', 'payment', 'transaction', 'fraud', 'banking', 'credit', 'wallet', 'ledger',
-      'stripe', 'ecommerce', 'checkout', 'pricing', 'reconciliation'
+      'laboratory', 'labs', 'lab', 'equipment', 'instruments', 'instrument', 'qr', 'qrcode', 'barcode',
+      'borrowed', 'returned', 'reservation', 'reserve', 'inventory', 'fault', 'fault-reporting',
+      'malfunctioning', 'maintenance', 'technicians', 'technician', 'damaged', 'preventive', 'wastage'
     ]
   }
 };
 
 /**
- * Tokenizes text into normalized lowercase alphanumeric tokens, stripping punctuation and stopwords
+ * Fast Stemmer: Normalizes English word endings (ing, ed, s, es, tion, ment, etc.)
+ * to map word variants (e.g. scanning/scans -> scan, automated/automation -> autom) to common roots.
  */
-export function tokenize(text: string): string[] {
+export function stemToken(token: string): string {
+  if (token.length <= 3) return token;
+  let word = token.toLowerCase();
+
+  if (word.endsWith('ing') && word.length > 5) word = word.slice(0, -3);
+  else if (word.endsWith('ed') && word.length > 4) word = word.slice(0, -2);
+  else if (word.endsWith('ies') && word.length > 4) word = word.slice(0, -3) + 'y';
+  else if (word.endsWith('es') && word.length > 4) word = word.slice(0, -2);
+  else if (word.endsWith('s') && !word.endsWith('ss') && word.length > 3) word = word.slice(0, -1);
+  else if (word.endsWith('tions') || word.endsWith('tion')) word = word.replace(/tions?$/, 'tion');
+  else if (word.endsWith('ments') || word.endsWith('ment')) word = word.replace(/ments?$/, 'ment');
+  else if (word.endsWith('abilities') || word.endsWith('ability')) word = word.replace(/abilit(ies|y)$/, 'able');
+
+  return word;
+}
+
+/**
+ * Tokenizes text into normalized lowercase alphanumeric tokens, stripping punctuation and stopwords,
+ * with optional stemming support for high-precision NLP matching.
+ */
+export function tokenize(text: string, applyStemming: boolean = false): string[] {
   if (!text) return [];
-  return text
+  const rawTokens = text
     .toLowerCase()
     .replace(/[^a-z0-9_\s]/g, ' ')
     .split(/\s+/)
     .filter(token => token.length > 2 && !STOPWORDS.has(token));
+
+  if (!applyStemming) return rawTokens;
+  return rawTokens.map(stemToken);
 }
 
 /**
@@ -196,13 +228,15 @@ export function computeCosineSimilarity(vecA: Record<string, number>, vecB: Reco
 }
 
 /**
- * Computes TF-IDF term frequency vector including unigrams, bigrams, and subwords
+ * Computes TF-IDF term frequency vector combining raw unstemmed and stemmed features
  */
 export function computeTermFrequency(text: string): Record<string, number> {
-  const tokens = tokenize(text);
-  const bigrams = getNGrams(tokens, 2);
-  const trigrams = getNGrams(tokens, 3);
-  const allFeatures = [...tokens, ...bigrams, ...trigrams];
+  const rawTokens = tokenize(text, false);
+  const stemmedTokens = rawTokens.map(stemToken);
+  const bigrams = getNGrams(rawTokens, 2);
+  const stemmedBigrams = getNGrams(stemmedTokens, 2);
+  const trigrams = getNGrams(rawTokens, 3);
+  const allFeatures = [...rawTokens, ...stemmedTokens, ...bigrams, ...stemmedBigrams, ...trigrams];
 
   const tf: Record<string, number> = {};
   for (const feature of allFeatures) {
@@ -217,9 +251,10 @@ export function computeTermFrequency(text: string): Record<string, number> {
  * weighted domain clusters and semantic keyword centroids.
  */
 export function computeSbertEmbeddingVector(text: string): Record<string, number> {
-  const tokens = tokenize(text);
-  const bigrams = getNGrams(tokens, 2);
-  const allTokens = [...tokens, ...bigrams];
+  const rawTokens = tokenize(text, false);
+  const stemmedTokens = rawTokens.map(stemToken);
+  const bigrams = getNGrams(rawTokens, 2);
+  const allTokens = [...rawTokens, ...stemmedTokens, ...bigrams];
   const vec: Record<string, number> = {};
 
   // Initialize cluster dimensions
@@ -227,14 +262,15 @@ export function computeSbertEmbeddingVector(text: string): Record<string, number
     vec[`sbert_dim_${clusterKey}`] = 0;
   }
 
-  // Populate semantic weights
+  // Populate semantic weights with stemming support
   for (const token of allTokens) {
     for (const [clusterKey, cluster] of Object.entries(SBERT_DOMAIN_CLUSTERS)) {
       const dimKey = `sbert_dim_${clusterKey}`;
       for (const kw of cluster.keywords) {
-        if (token === kw) {
-          vec[dimKey] = (vec[dimKey] || 0) + 3.0 * cluster.weight;
-        } else if (token.includes(kw) || kw.includes(token)) {
+        const stemmedKw = stemToken(kw);
+        if (token === kw || token === stemmedKw) {
+          vec[dimKey] = (vec[dimKey] || 0) + 3.5 * cluster.weight;
+        } else if (kw.length >= 5 && token.length >= 5 && (token.startsWith(kw) || kw.startsWith(token) || (stemmedKw.length >= 5 && token.startsWith(stemmedKw)))) {
           vec[dimKey] = (vec[dimKey] || 0) + 1.5 * cluster.weight;
         }
       }
@@ -248,9 +284,8 @@ export function computeSbertEmbeddingVector(text: string): Record<string, number
 }
 
 /**
- * Calculates strong hybrid similarity combining SBERT semantic vectors
- * and TF-IDF n-gram text matching.
- * Formula: 65% SBERT Semantic Embeddings + 35% TF-IDF Lexical Match
+ * Calculates high-precision hybrid similarity combining SBERT semantic vectors,
+ * dual-mode TF-IDF n-grams, subword shingles, and Jaccard token overlap.
  */
 export function calculateHybridSimilarity(
   queryText: string,
@@ -265,7 +300,7 @@ export function calculateHybridSimilarity(
   const sbertTarget = computeSbertEmbeddingVector(targetText);
   const sbertSim = computeCosineSimilarity(sbertQuery, sbertTarget);
 
-  // 2. TF-IDF lexical unigram & bigram similarity
+  // 2. TF-IDF lexical unigram & bigram similarity (dual raw + stemmed)
   const tfQuery = computeTermFrequency(queryText);
   const tfTarget = computeTermFrequency(targetText);
   const tfidfSim = computeCosineSimilarity(tfQuery, tfTarget);
@@ -278,11 +313,19 @@ export function calculateHybridSimilarity(
   const unionShingles = new Set([...queryShingles, ...targetShingles]).size;
   const shingleSim = unionShingles > 0 ? shingleMatch / unionShingles : 0;
 
-  // Blended TF-IDF score with subword support
-  const enhancedTfidf = 0.80 * tfidfSim + 0.20 * shingleSim;
+  // 4. Exact Key Term Jaccard Overlap
+  const queryTokens = new Set([...tokenize(queryText, false), ...tokenize(queryText, true)]);
+  const targetTokens = new Set([...tokenize(targetText, false), ...tokenize(targetText, true)]);
+  let keyMatchCount = 0;
+  queryTokens.forEach(t => { if (targetTokens.has(t)) keyMatchCount++; });
+  const denom = (queryTokens.size + targetTokens.size - keyMatchCount);
+  const jaccardSim = denom > 0 ? keyMatchCount / denom : 0;
 
-  // Calibrated Hybrid Formula: 60% SBERT Semantic + 40% TF-IDF with peak signal sensitivity
-  const rawOverall = (0.60 * sbertSim) + (0.40 * enhancedTfidf);
+  // Enhanced TF-IDF
+  const enhancedTfidf = 0.60 * tfidfSim + 0.25 * jaccardSim + 0.15 * shingleSim;
+
+  // Calibrated Hybrid Formula: 65% SBERT Semantic + 35% High-Precision Lexical
+  const rawOverall = (0.65 * sbertSim) + (0.35 * enhancedTfidf);
   const maxSignal = Math.max(sbertSim, enhancedTfidf);
   const hybridScore = maxSignal >= 0.70 ? Math.max(rawOverall, maxSignal * 0.85 + rawOverall * 0.15) : rawOverall;
 
@@ -294,6 +337,81 @@ export function calculateHybridSimilarity(
     overallScore: normalizedOverall,
     sbertScore: normalizedSbert,
     tfidfScore: normalizedTfidf
+  };
+}
+
+/**
+ * Evaluates candidate against target by calculating distinct section similarities 
+ * for problem statement and abstract, and returning their arithmetic average.
+ */
+export function evaluateSectionBySectionSimilarity(
+  queryTitle: string,
+  queryAbstract: string,
+  queryStatement: string | undefined,
+  targetTitle: string,
+  targetAbstract: string,
+  targetStatement?: string
+): { overallScore: number; sbertScore: number; tfidfScore: number } {
+  const qAbs = (queryAbstract || '').trim();
+  const tAbs = (targetAbstract || '').trim();
+  const qStmt = (queryStatement || '').trim();
+  const tStmt = (targetStatement || '').trim();
+  const qTitle = (queryTitle || '').trim();
+  const tTitle = (targetTitle || '').trim();
+
+  const absSim = (qAbs && tAbs) 
+    ? calculateHybridSimilarity(qAbs, tAbs) 
+    : null;
+
+  const stmtSim = (qStmt && tStmt) 
+    ? calculateHybridSimilarity(qStmt, tStmt) 
+    : null;
+
+  const titleSim = (qTitle && tTitle) 
+    ? calculateHybridSimilarity(qTitle, tTitle) 
+    : null;
+
+  let overall: number;
+  let sbert: number;
+  let tfidf: number;
+
+  if (absSim && stmtSim) {
+    // Both abstract and problem statement present: take average of section similarities
+    overall = (absSim.overallScore + stmtSim.overallScore) / 2;
+    sbert = (absSim.sbertScore + stmtSim.sbertScore) / 2;
+    tfidf = (absSim.tfidfScore + stmtSim.tfidfScore) / 2;
+  } else if (absSim) {
+    overall = absSim.overallScore;
+    sbert = absSim.sbertScore;
+    tfidf = absSim.tfidfScore;
+  } else if (stmtSim) {
+    overall = stmtSim.overallScore;
+    sbert = stmtSim.sbertScore;
+    tfidf = stmtSim.tfidfScore;
+  } else if (titleSim) {
+    overall = titleSim.overallScore;
+    sbert = titleSim.sbertScore;
+    tfidf = titleSim.tfidfScore;
+  } else {
+    const fullQ = [qTitle, qStmt, qAbs].filter(Boolean).join('. ');
+    const fullT = [tTitle, tStmt, tAbs].filter(Boolean).join('. ');
+    const sim = calculateHybridSimilarity(fullQ, fullT);
+    overall = sim.overallScore;
+    sbert = sim.sbertScore;
+    tfidf = sim.tfidfScore;
+  }
+
+  // If title is identical or nearly identical (>=0.90), preserve peak title overlap
+  if (titleSim && titleSim.overallScore >= 0.90) {
+    overall = Math.max(overall, titleSim.overallScore);
+    sbert = Math.max(sbert, titleSim.sbertScore);
+    tfidf = Math.max(tfidf, titleSim.tfidfScore);
+  }
+
+  return {
+    overallScore: Math.min(1.0, Math.max(0.0, Math.round(overall * 1000) / 1000)),
+    sbertScore: Math.min(1.0, Math.max(0.0, Math.round(sbert * 1000) / 1000)),
+    tfidfScore: Math.min(1.0, Math.max(0.0, Math.round(tfidf * 1000) / 1000))
   };
 }
 
@@ -326,15 +444,16 @@ export function scanProposalSimilarity(
   let bestMatchedActiveProp: ProjectProposal | undefined = undefined;
   let bestScores = { sbert: 0, tfidf: 0 };
 
-  // 1. Scan historical archive projects
+  // 1. Scan historical archive projects with section-by-section averaging
   for (const project of historicalProjects) {
-    const targetText = [
+    const sim = evaluateSectionBySectionSimilarity(
+      title,
+      abstract,
+      problemStatement,
       project.title,
-      (project as any).problemStatement,
-      project.abstract
-    ].filter(p => p && p.trim().length > 0).join('. ');
-
-    const sim = calculateHybridSimilarity(fullText, targetText);
+      project.abstract,
+      (project as any).problemStatement
+    );
 
     if (sim.overallScore > highestScore) {
       highestScore = sim.overallScore;
@@ -349,13 +468,14 @@ export function scanProposalSimilarity(
     for (const prop of activeProposals) {
       if (currentProposalId && prop.id === currentProposalId) continue;
 
-      const targetText = [
+      const sim = evaluateSectionBySectionSimilarity(
+        title,
+        abstract,
+        problemStatement,
         prop.title,
-        prop.problemStatement,
-        prop.abstract
-      ].filter(p => p && p.trim().length > 0).join('. ');
-
-      const sim = calculateHybridSimilarity(fullText, targetText);
+        prop.abstract,
+        prop.problemStatement
+      );
 
       if (sim.overallScore > highestScore) {
         highestScore = sim.overallScore;

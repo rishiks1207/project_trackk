@@ -858,7 +858,18 @@ export const ConflictResolutionDashboard: React.FC<ConflictResolutionDashboardPr
         {/* ================= STUDENT INITIAL SUBMISSION FORM (STUDENT ROLE ONLY, WHEN NO PITCH) ================= */}
         {currentRole === 'student' && !hasSubmittedPitch && (
           <div className="p-6 bg-white border-t border-slate-100 space-y-3">
-            <div className="flex items-center gap-2">
+            {/* Friendly Student Guidance Note */}
+            <div className="p-4 bg-amber-50/90 border border-amber-200/80 rounded-2xl space-y-1.5 text-xs">
+              <div className="flex items-center gap-2 font-extrabold text-amber-950">
+                <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Topic Overlap Notice & Pitch Defense Guidance</span>
+              </div>
+              <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
+                Your proposal is similar to a previous project. You can either <strong>continue with this topic</strong> or <strong>think of another topic</strong>. If you want to continue, submit your 200-word Pitch Defense below to win this topic. Best of luck! Don&apos;t worry if you decide to continue — there is a good chance both groups can keep the topic if your pitch demonstrates distinct technical angles!
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
               <Sparkles className="w-4 h-4 text-black" />
               <h4 className="text-xs font-extrabold text-[#18191E] uppercase tracking-wider">
                 Submit Your 200-Word Pitch Defense (Group {activeProposal.groupNo})

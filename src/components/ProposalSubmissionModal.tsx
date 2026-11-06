@@ -535,11 +535,22 @@ export const ProposalSubmissionModal: React.FC<ProposalSubmissionModalProps> = (
 
             {/* Pitch Defense section (if conflict flagged or voluntary) */}
             {(similarityReport.isConflict || pitchDefense.length > 0) && (
-              <div className="bg-white rounded-3xl p-5 border border-red-200 shadow-xs space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="bg-white rounded-3xl p-5 border border-amber-200 shadow-xs space-y-3">
+                {/* Friendly Student Guidance Note */}
+                <div className="bg-amber-50/90 rounded-2xl p-4 border border-amber-200/80 space-y-1.5 text-xs">
+                  <div className="flex items-center gap-2 font-extrabold text-amber-950">
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Topic Similarity Notice ({simPercent}% Overall Overlap)</span>
+                  </div>
+                  <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
+                    Your proposal is similar to a previous project. You can either <strong>continue with this topic</strong> or <strong>think of another topic</strong>. If you want to continue, submit your 200-word Pitch Defense below to win this topic. Best of luck! Don&apos;t worry if you decide to continue — there is a high chance both groups can keep the topic if your pitch shows distinct technical angles or localized scope!
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <div>
-                    <h4 className="text-xs font-bold text-red-950 flex items-center gap-1.5">
-                      <Scale className="w-4 h-4 text-red-600" />
+                    <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Scale className="w-4 h-4 text-amber-600" />
                       <span>200-Word Pitch Defense</span>
                     </h4>
                     <p className="text-[11px] text-slate-500">
